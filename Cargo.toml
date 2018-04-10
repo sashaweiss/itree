@@ -1,0 +1,6 @@
+[package]
+name = "rusty-tree"
+version = "0.1.0"
+authors = ["sashaweiss <sasha@sashaweiss.coffee>"]
+
+[dependencies]
