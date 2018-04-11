@@ -5,3 +5,4 @@ authors = ["sashaweiss <sasha@sashaweiss.coffee>"]
 
 [dependencies]
 termion = "*"
+tui = "0.2.1"
