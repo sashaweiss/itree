@@ -1,7 +1,13 @@
 use std::fs;
+use std::cmp::Ordering;
 
 fn main() {
-    let des = files_in_dir(&"./".to_string());
+    let mut des = files_in_dir(&"./".to_string());
+
+    des.sort_by(|f: &fs::DirEntry, s: &fs::DirEntry| -> Ordering {
+        f.path().cmp(&s.path())
+    });
+
     for de in des {
         println!("Path: {}", de.path().display());
     }
