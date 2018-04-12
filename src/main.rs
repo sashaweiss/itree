@@ -13,10 +13,10 @@ fn main() {
     let mut cur = cursor::new_cursor_bound_to_term();
 
     border::draw_border(
-        cur.bound_t,
         cur.bound_l,
-        cur.bound_b - cur.bound_t,
+        cur.bound_t,
         cur.bound_r - cur.bound_l,
+        cur.bound_b - cur.bound_t,
     );
 
     cur.interact();
