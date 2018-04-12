@@ -16,30 +16,6 @@ pub struct Cursor {
 }
 
 impl Cursor {
-    pub fn interact(&mut self) {
-        let stdin = io::stdin();
-
-        self.draw();
-        for c in stdin.keys() {
-            match c.unwrap() {
-                Key::Char('q') => break,
-                Key::Left => {
-                    self.left();
-                }
-                Key::Right => {
-                    self.right();
-                }
-                Key::Up => {
-                    self.up();
-                }
-                Key::Down => {
-                    self.down();
-                }
-                _ => {}
-            }
-        }
-    }
-
     fn new(x: u16, y: u16, bound_t: u16, bound_b: u16, bound_l: u16, bound_r: u16) -> Cursor {
         Cursor {
             x: x,
@@ -82,6 +58,34 @@ impl Cursor {
             self.x -= 1;
         }
         self.draw();
+    }
+
+    pub fn interact(&mut self) {
+        let stdin = io::stdin();
+
+        // The following is necessary to properly read from stdin.
+        // For details, see: https://github.com/ticki/termion/issues/42
+        let _stdout = io::stdout().into_raw_mode().unwrap();
+
+        self.draw();
+        for c in stdin.keys() {
+            match c.unwrap() {
+                Key::Char('q') => break,
+                Key::Left => {
+                    self.left();
+                }
+                Key::Right => {
+                    self.right();
+                }
+                Key::Up => {
+                    self.up();
+                }
+                Key::Down => {
+                    self.down();
+                }
+                _ => {}
+            }
+        }
     }
 }
 
