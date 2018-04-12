@@ -4,6 +4,7 @@ use termion::terminal_size;
 use termion::input::TermRead;
 use termion::cursor::{DetectCursorPos, Goto};
 use termion::event::Key;
+use termion::raw::IntoRawMode;
 
 pub struct Cursor {
     pub x: u16,
@@ -85,7 +86,7 @@ impl Cursor {
 }
 
 pub fn new_cursor_bound_to_term() -> Cursor {
-    let mut stdout = io::stdout();
+    let mut stdout = io::stdout().into_raw_mode().unwrap();
 
     let (_, _tl_y) = stdout.cursor_pos().unwrap();
     let (ogn_x, ogn_y) = (1, _tl_y - 1); // Termion and Tui aren't playing nice
