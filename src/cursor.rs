@@ -1,10 +1,8 @@
 use std::io;
 
 use termion::terminal_size;
-use termion::input::TermRead;
-use termion::cursor::{DetectCursorPos, Goto};
-use termion::event::Key;
 use termion::raw::IntoRawMode;
+use termion::cursor::{DetectCursorPos, Goto, Hide, Show};
 
 pub struct Cursor {
     pub x: u16,
@@ -16,29 +14,20 @@ pub struct Cursor {
 }
 
 impl Cursor {
-    fn new(x: u16, y: u16, bound_t: u16, bound_b: u16, bound_l: u16, bound_r: u16) -> Cursor {
-        Cursor {
-            x: x,
-            y: y,
-            bound_t: bound_t,
-            bound_b: bound_b,
-            bound_l: bound_l,
-            bound_r: bound_r,
-        }
-    }
-
-    fn draw(&self) {
+    pub fn draw(&self) {
         println!("{}", Goto(self.x, self.y));
     }
 
-    fn up(&mut self) {
+    #[allow(dead_code)]
+    pub fn up(&mut self) {
         if self.y > self.bound_t {
             self.y -= 1;
         }
         self.draw();
     }
 
-    fn down(&mut self) {
+    #[allow(dead_code)]
+    pub fn down(&mut self) {
         // Termion and Tui aren't playing nice
         if self.y < self.bound_b - 1 {
             self.y += 1;
@@ -46,46 +35,20 @@ impl Cursor {
         self.draw();
     }
 
-    fn right(&mut self) {
+    #[allow(dead_code)]
+    pub fn right(&mut self) {
         if self.x < self.bound_r {
             self.x += 1;
         }
         self.draw();
     }
 
-    fn left(&mut self) {
+    #[allow(dead_code)]
+    pub fn left(&mut self) {
         if self.x > self.bound_l {
             self.x -= 1;
         }
         self.draw();
-    }
-
-    pub fn interact(&mut self) {
-        let stdin = io::stdin();
-
-        // The following is necessary to properly read from stdin.
-        // For details, see: https://github.com/ticki/termion/issues/42
-        let _stdout = io::stdout().into_raw_mode().unwrap();
-
-        self.draw();
-        for c in stdin.keys() {
-            match c.unwrap() {
-                Key::Char('q') => break,
-                Key::Left => {
-                    self.left();
-                }
-                Key::Right => {
-                    self.right();
-                }
-                Key::Up => {
-                    self.up();
-                }
-                Key::Down => {
-                    self.down();
-                }
-                _ => {}
-            }
-        }
     }
 }
 
@@ -98,5 +61,20 @@ pub fn new_cursor_bound_to_term() -> Cursor {
     let (_br_x, _br_y) = terminal_size().unwrap();
     let (far_x, far_y) = (_br_x - ogn_x, _br_y - ogn_y);
 
-    Cursor::new(ogn_x, ogn_y, ogn_y, ogn_y + far_y, ogn_x, ogn_x + far_x)
+    Cursor {
+        x: ogn_x,
+        y: ogn_y,
+        bound_t: ogn_y,
+        bound_b: ogn_y + far_y,
+        bound_l: ogn_x,
+        bound_r: ogn_x + far_x,
+    }
+}
+
+pub fn hide() {
+    println!("{}", Hide);
+}
+
+pub fn show() {
+    println!("{}", Show);
 }

@@ -1,41 +1,55 @@
 extern crate termion;
-extern crate tui;
 
 mod cursor;
-mod border;
+mod branch;
+mod files;
 
-use std::fs;
 use std::io;
-use std::cmp::Ordering;
+
+use termion::event::Key;
+use termion::input::TermRead;
+use termion::raw::IntoRawMode;
 
 fn main() {
-    let _des = files_in_root();
-
+    cursor::hide();
     let mut cur = cursor::new_cursor_bound_to_term();
 
-    border::draw_border(
-        cur.bound_l,
-        cur.bound_t,
-        cur.bound_r - cur.bound_l,
-        cur.bound_b - cur.bound_t,
-    );
+    let fs = files::in_root();
+    let mut c = 0;
+    for de in &fs {
+        c += 1;
+        branch::draw(&mut cur, de, c == fs.len(), "");
+    }
 
-    cur.interact();
+    cursor::show();
+    // interact(cur);
 }
 
-fn files_in_root() -> Vec<fs::DirEntry> {
-    files_in_dir(&"./".to_string()).unwrap()
-}
+#[allow(dead_code)]
+fn interact(mut cur: cursor::Cursor) {
+    let stdin = io::stdin();
 
-fn files_in_dir(dir: &str) -> io::Result<Vec<fs::DirEntry>> {
-    let mut des: Vec<fs::DirEntry> = fs::read_dir(dir)?
-        .filter(|de| de.is_ok())
-        .map(|de| de.unwrap())
-        .collect();
+    // The following is necessary to properly read from stdin.
+    // For details, see: https://github.com/ticki/termion/issues/42
+    let _stdout = io::stdout().into_raw_mode().unwrap();
 
-    des.sort_by(|f: &fs::DirEntry, s: &fs::DirEntry| -> Ordering {
-        f.path().cmp(&s.path())
-    });
-
-    Ok(des)
+    cur.draw();
+    for c in stdin.keys() {
+        match c.unwrap() {
+            Key::Char('q') | Key::Ctrl('c') => break,
+            Key::Left => {
+                cur.left();
+            }
+            Key::Right => {
+                cur.right();
+            }
+            Key::Up => {
+                cur.up();
+            }
+            Key::Down => {
+                cur.down();
+            }
+            _ => {}
+        }
+    }
 }
