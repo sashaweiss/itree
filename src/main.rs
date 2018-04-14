@@ -2,7 +2,6 @@ extern crate termion;
 
 mod cursor;
 mod branch;
-mod files;
 
 use std::io;
 
@@ -12,14 +11,8 @@ use termion::raw::IntoRawMode;
 
 fn main() {
     cursor::hide();
-    let mut cur = cursor::new_cursor_bound_to_term();
 
-    let fs = files::in_root();
-    let mut c = 0;
-    for de in &fs {
-        c += 1;
-        branch::draw(&mut cur, de, c == fs.len(), "");
-    }
+    branch::draw_from(&"./");
 
     cursor::show();
     // interact(cur);
