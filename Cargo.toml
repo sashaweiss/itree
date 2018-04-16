@@ -5,3 +5,4 @@ authors = ["sashaweiss <sasha@sashaweiss.coffee>"]
 
 [dependencies]
 termion = "*"
+ignore = "0.3"

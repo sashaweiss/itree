@@ -1,4 +1,5 @@
 extern crate termion;
+extern crate ignore;
 
 mod cursor;
 mod branch;
