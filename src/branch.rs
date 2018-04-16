@@ -25,7 +25,7 @@ fn files_in_dir(dir: &Path) -> io::Result<Vec<fs::DirEntry>> {
 fn draw_branch(cur: &mut Cursor, entry: &Path, last: bool, indent: usize) {
     println!(
         "{}{} {}",
-        iter::repeat("\t").take(indent).collect::<String>(),
+        iter::repeat("    ").take(indent).collect::<String>(),
         if last { END_BRANCH } else { MID_BRANCH },
         entry.display(),
         );
