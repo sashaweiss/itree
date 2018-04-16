@@ -10,11 +10,11 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
 fn main() {
-    cursor::hide();
+    // cursor::hide();
 
     branch::draw_from(&"./");
 
-    cursor::show();
+    // cursor::show();
     // interact(cur);
 }
 

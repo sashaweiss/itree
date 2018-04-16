@@ -71,10 +71,12 @@ pub fn new_cursor_bound_to_term() -> Cursor {
     }
 }
 
+#[allow(dead_code)]
 pub fn hide() {
     println!("{}", Hide);
 }
 
+#[allow(dead_code)]
 pub fn show() {
     println!("{}", Show);
 }
