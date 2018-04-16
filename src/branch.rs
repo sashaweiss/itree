@@ -18,6 +18,11 @@ fn draw_branch(cur: &mut Cursor, entry: &Path, last: bool, indent: usize) {
     cur.down();
 }
 
+fn draw_root(cur: &mut Cursor, entry: &Path) {
+    println!("{}", entry.display());
+    cur.down();
+}
+
 /// Draw the tree, starting with the given directory, starting at the top of the terminal space.
 pub fn draw_from<P: AsRef<Path>>(dir: P) {
     draw_from_with(&mut new_cursor_bound_to_term(), dir.as_ref());
@@ -31,6 +36,9 @@ fn draw_from_with(cur: &mut Cursor, dir: &Path) {
         .build()
         .peekable();
 
+    draw_root(cur, dir);
+    walk.next();
+
     while let Some(Ok(de)) = walk.next() {
         let last = match walk.peek() {
             Some(&Ok(ref next)) => next.depth() > de.depth(),
@@ -38,6 +46,6 @@ fn draw_from_with(cur: &mut Cursor, dir: &Path) {
             None => true,
         };
 
-        draw_branch(cur, &de.path(), last, de.depth());
+        draw_branch(cur, &de.path(), last, de.depth() - 1);
     }
 }
