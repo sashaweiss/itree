@@ -24,8 +24,10 @@ fn draw_root(cur: &mut Cursor, entry: &Path) {
 }
 
 /// Draw the tree, starting with the given directory, starting at the top of the terminal space.
-pub fn draw_from<P: AsRef<Path>>(dir: P) {
-    draw_from_with(&mut new_cursor_bound_to_term(), dir.as_ref());
+pub fn draw_from<P: AsRef<Path>>(dir: P) -> Cursor {
+    let mut cur = new_cursor_bound_to_term();
+    draw_from_with(&mut cur, dir.as_ref());
+    cur
 }
 
 /// Draw the tree, starting with the given directory, from the given cursor.

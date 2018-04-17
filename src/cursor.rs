@@ -18,7 +18,6 @@ impl Cursor {
         println!("{}", Goto(self.x, self.y));
     }
 
-    #[allow(dead_code)]
     pub fn up(&mut self) {
         if self.y > self.bound_t {
             self.y -= 1;
@@ -26,7 +25,6 @@ impl Cursor {
         self.draw();
     }
 
-    #[allow(dead_code)]
     pub fn down(&mut self) {
         // Termion and Tui aren't playing nice
         if self.y < self.bound_b - 1 {
@@ -35,7 +33,6 @@ impl Cursor {
         self.draw();
     }
 
-    #[allow(dead_code)]
     pub fn right(&mut self) {
         if self.x < self.bound_r {
             self.x += 1;
@@ -43,7 +40,6 @@ impl Cursor {
         self.draw();
     }
 
-    #[allow(dead_code)]
     pub fn left(&mut self) {
         if self.x > self.bound_l {
             self.x -= 1;
@@ -71,12 +67,10 @@ pub fn new_cursor_bound_to_term() -> Cursor {
     }
 }
 
-#[allow(dead_code)]
 pub fn hide() {
     println!("{}", Hide);
 }
 
-#[allow(dead_code)]
 pub fn show() {
     println!("{}", Show);
 }

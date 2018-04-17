@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 extern crate termion;
 extern crate ignore;
 
@@ -13,14 +15,13 @@ use termion::raw::IntoRawMode;
 fn main() {
     // cursor::hide();
 
-    branch::draw_from(&"./");
+    let mut cur = branch::draw_from(&"./");
 
     // cursor::show();
-    // interact(cur);
+    // interact(&mut cur);
 }
 
-#[allow(dead_code)]
-fn interact(mut cur: cursor::Cursor) {
+fn interact(cur: &mut cursor::Cursor) {
     let stdin = io::stdin();
 
     // The following is necessary to properly read from stdin.
