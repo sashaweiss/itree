@@ -13,7 +13,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
 fn main() {
-    branch::draw_from(&mut io::stdout(), &"./");
+    branch::draw_rooted(&mut io::stdout(), &".");
 }
 
 fn interact(cur: &mut cursor::Cursor) {

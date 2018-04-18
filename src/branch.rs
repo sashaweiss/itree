@@ -8,12 +8,17 @@ pub const MID_BRANCH: &str = "├──";
 pub const END_BRANCH: &str = "└──";
 
 fn draw_branch<W: Write>(writer: &mut W, entry: &Path, last: bool, indent: usize) {
+    let file_name = match entry.file_name() {
+        Some(name) => name,
+        None => return,
+    }.to_string_lossy();
+
     writeln!(
         writer,
         "{}{} {}",
         iter::repeat("    ").take(indent).collect::<String>(),
         if last { END_BRANCH } else { MID_BRANCH },
-        entry.display(),
+        file_name,
         ).unwrap();
 }
 
@@ -22,7 +27,7 @@ fn draw_root<W: Write>(writer: &mut W, entry: &Path) {
 }
 
 /// Draw the tree, starting with the given directory.
-pub fn draw_from<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) {
+pub fn draw_rooted<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) {
     let mut walk = WalkBuilder::new(dir)
         .hidden(false)
         .git_ignore(true)
@@ -47,6 +52,7 @@ pub fn draw_from<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) {
 mod tests {
     use super::*;
 
+    use std::panic;
     use std::path::{Path, PathBuf};
     use std::env::temp_dir;
     use std::fs::{File, create_dir, create_dir_all, remove_dir_all};
@@ -62,7 +68,7 @@ mod tests {
         }
     }
 
-    fn clean() {
+    fn cleanup() {
         let p = td();
         if Path::new(&p).exists() {
             remove_dir_all(p).unwrap();
@@ -80,8 +86,36 @@ mod tests {
         create_dir_all(td().join(path)).unwrap();
     }
 
+    fn run_test<T: FnOnce() -> () + panic::UnwindSafe>(test: T) -> () {
+        setup();
+        let result = panic::catch_unwind(|| test());
+        cleanup();
+
+        assert!(result.is_ok())
+    }
+
     #[test]
-    fn test_draw_no_dir() {}
+    fn test_draw_no_dir() {
+        run_test(|| {
+            create_files(&["myfile", "myotherfile"]);
+
+            let mut actual = Vec::new();
+            draw_rooted(&mut actual, &td());
+            let actual_string = String::from_utf8(actual).unwrap();
+
+            let exp =
+                format!(
+                "{}\n{} {}\n{} {}\n",
+                td().display(),
+                MID_BRANCH,
+                "myotherfile",
+                END_BRANCH,
+                "myfile",
+            );
+
+            assert_eq!(actual_string, exp);
+        });
+    }
 
     #[test]
     fn test_draw_simple_dir() {}
