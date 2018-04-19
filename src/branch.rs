@@ -6,6 +6,7 @@ use ignore::WalkBuilder;
 
 pub const MID_BRANCH: &str = "├──";
 pub const END_BRANCH: &str = "└──";
+pub const INDENT: &str = "    ";
 
 fn draw_branch<W: Write>(writer: &mut W, entry: &Path, last: bool, indent: usize) {
     let file_name = match entry.file_name() {
@@ -16,7 +17,7 @@ fn draw_branch<W: Write>(writer: &mut W, entry: &Path, last: bool, indent: usize
     writeln!(
         writer,
         "{}{} {}",
-        iter::repeat("    ").take(indent).collect::<String>(),
+        iter::repeat(INDENT).take(indent).collect::<String>(),
         if last { END_BRANCH } else { MID_BRANCH },
         file_name,
         ).unwrap();
@@ -52,74 +53,54 @@ pub fn draw_rooted<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) {
 mod tests {
     use super::*;
 
-    use std::panic;
-    use std::path::{Path, PathBuf};
-    use std::env::temp_dir;
-    use std::fs::{File, create_dir, create_dir_all, remove_dir_all};
+    use std::path::PathBuf;
 
-    fn td() -> PathBuf {
-        temp_dir().join("rusty-tree-tests")
+    fn test_dir(dir: &str) -> PathBuf {
+        PathBuf::new().join("resources/test").join(dir)
     }
 
-    fn setup() {
-        let p = td();
-        if !Path::new(&p).exists() {
-            create_dir(p).unwrap();
-        }
+    fn abs_test_dir(dir: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(test_dir(dir))
     }
 
-    fn cleanup() {
-        let p = td();
-        if Path::new(&p).exists() {
-            remove_dir_all(p).unwrap();
-        }
-    }
+    fn draw_to_string(dir: &PathBuf) -> String {
+        let mut actual = Vec::new();
+        draw_rooted(&mut actual, dir);
 
-    fn create_files<P: AsRef<Path>>(names: &[P]) {
-        for name in names {
-            File::create(td().join(name)).unwrap();
-        }
-    }
-
-    fn create_dirs<P: AsRef<Path>>(path_parts: &[P]) {
-        let path = path_parts.iter().fold(PathBuf::new(), |acc, p| acc.join(p));
-        create_dir_all(td().join(path)).unwrap();
-    }
-
-    fn run_test<T: FnOnce() -> () + panic::UnwindSafe>(test: T) -> () {
-        setup();
-        let result = panic::catch_unwind(|| test());
-        cleanup();
-
-        assert!(result.is_ok())
+        String::from_utf8(actual).unwrap()
     }
 
     #[test]
-    fn test_draw_no_dir() {
-        run_test(|| {
-            create_files(&["myfile", "myotherfile"]);
+    fn test_draw_abs_path() {
+        let dir = abs_test_dir("simple");
 
-            let mut actual = Vec::new();
-            draw_rooted(&mut actual, &td());
-            let actual_string = String::from_utf8(actual).unwrap();
-
-            let exp =
-                format!(
+        let exp =
+            format!(
                 "{}\n{} {}\n{} {}\n",
-                td().display(),
+                dir.display(),
                 MID_BRANCH,
                 "myotherfile",
                 END_BRANCH,
                 "myfile",
             );
 
-            assert_eq!(actual_string, exp);
-        });
+        assert_eq!(exp, draw_to_string(&dir));
     }
 
     #[test]
-    fn test_draw_simple_dir() {}
+    fn test_draw_rel_path() {
+        let dir = test_dir("simple");
 
-    #[test]
-    fn test_draw_nested_dir() {}
+        let exp =
+            format!(
+                "{}\n{} {}\n{} {}\n",
+                dir.display(),
+                MID_BRANCH,
+                "myotherfile",
+                END_BRANCH,
+                "myfile",
+            );
+
+        assert_eq!(exp, draw_to_string(&dir));
+    }
 }
