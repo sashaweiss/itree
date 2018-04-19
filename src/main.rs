@@ -5,7 +5,8 @@ extern crate indextree;
 extern crate ignore;
 
 mod cursor;
-mod branch;
+mod draw;
+mod fs;
 
 use std::io;
 
@@ -14,7 +15,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
 fn main() {
-    branch::draw_rooted(&mut io::stdout(), &".");
+    draw::draw_rooted(&mut io::stdout(), &".");
 }
 
 fn interact(cur: &mut cursor::Cursor) {
