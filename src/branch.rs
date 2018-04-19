@@ -40,7 +40,7 @@ pub fn draw_rooted<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) {
 
     while let Some(Ok(de)) = walk.next() {
         let last = match walk.peek() {
-            Some(&Ok(ref next)) => next.depth() > de.depth(),
+            Some(&Ok(ref next)) => next.depth() != de.depth(),
             Some(&Err(_)) => continue,
             None => true,
         };
