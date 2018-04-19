@@ -103,4 +103,24 @@ mod tests {
 
         assert_eq!(exp, draw_to_string(&dir));
     }
+
+    #[test]
+    fn test_draw_dir() {
+        let dir = test_dir("one_dir");
+
+        let exp =
+            format!(
+            "{}\n{} {}\n{} {}\n{}{} {}\n",
+            dir.display(),
+            MID_BRANCH,
+            "myotherfile",
+            END_BRANCH,
+            "mydir",
+            INDENT,
+            END_BRANCH,
+            "myfile",
+         );
+
+        assert_eq!(exp, draw_to_string(&dir));
+    }
 }
