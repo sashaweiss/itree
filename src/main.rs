@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 extern crate termion;
+extern crate indextree;
 extern crate ignore;
 
 mod cursor;

@@ -5,4 +5,5 @@ authors = ["sashaweiss <sasha@sashaweiss.coffee>"]
 
 [dependencies]
 termion = "*"
+indextree = "1.1.1"
 ignore = "0.3"
