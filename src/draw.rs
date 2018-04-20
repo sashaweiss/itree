@@ -21,6 +21,7 @@ pub fn draw_rooted<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) {
 
 fn draw_tree<W: Write>(writer: &mut W, tree: &Arena<DirEntry>, root: NodeId) {
     let root_node = &tree[root];
+
     for child in root.children(&tree) {
         let de = &tree[child].data;
 
