@@ -16,11 +16,7 @@ fn get_walker<P: AsRef<Path>>(dir: &P) -> iter::Peekable<Walk> {
 /// Add a node to `tree`, as a child of `node`, with `data` as the contents.
 fn add_child_to_tree<T>(tree: &mut Arena<T>, node: NodeId, data: T) -> NodeId {
     let new_node = tree.new_node(data);
-    if let Some(p) = tree[node].parent() {
-        p.append(new_node, tree); // curr != root
-    } else {
-        node.append(new_node, tree); // curr == root
-    }
+    node.append(new_node, tree);
     new_node
 }
 
@@ -50,9 +46,9 @@ pub fn collect_fs<P: AsRef<Path>>(dir: &P) -> (Arena<DirEntry>, NodeId) {
             Some(&Ok(ref next)) => {
                 let (nd, dd) = (next.depth(), de.depth());
 
-                if nd > dd {
-                    DepthChange::Last(nd - dd)
-                } else if nd < dd {
+                if nd < dd {
+                    DepthChange::Last(dd - nd)
+                } else if nd > dd {
                     DepthChange::NextIsFirst
                 } else {
                     DepthChange::Isnt

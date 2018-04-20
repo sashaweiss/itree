@@ -2,17 +2,37 @@ use std::iter;
 use std::path::Path;
 use std::io::Write;
 
+use indextree::{Arena, NodeId};
+use ignore::DirEntry;
+
+use fs::collect_fs;
+
 pub const MID_BRANCH: &str = "├──";
 pub const END_BRANCH: &str = "└──";
 pub const INDENT: &str = "    ";
 
 /// Draw the tree, starting with the given directory.
-pub fn draw_rooted<W: Write, P: AsRef<Path>>(_writer: &mut W, dir: &P) {
-    // (tree, root) = collect_fs(dir);
+pub fn draw_rooted<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) {
+    let (tree, root) = collect_fs(dir);
 
-    // draw_root(writer, dir.as_ref());
+    draw_root(writer, dir.as_ref());
+    draw_tree(writer, &tree, root);
+}
 
-    // draw_branch(writer, &de.path(), last, de.depth() - 1);
+fn draw_tree<W: Write>(writer: &mut W, tree: &Arena<DirEntry>, root: NodeId) {
+    let root_node = &tree[root];
+    for child in root.children(&tree) {
+        let de = &tree[child].data;
+
+        draw_branch(
+            writer,
+            de.path(),
+            Some(child) == root_node.last_child(),
+            de.depth() - 1,
+        );
+
+        draw_tree(writer, &tree, child);
+    }
 }
 
 fn draw_branch<W: Write>(writer: &mut W, entry: &Path, last: bool, indent: usize) {
