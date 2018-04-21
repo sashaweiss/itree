@@ -1,4 +1,3 @@
-use std::iter;
 use std::path::Path;
 use std::io::Write;
 
@@ -9,34 +8,51 @@ use fs::collect_fs;
 
 pub const MID_BRANCH: &str = "├──";
 pub const END_BRANCH: &str = "└──";
-pub const INDENT: &str = "    ";
+
+pub const BLANK_INDENT: &str = "    ";
+pub const BAR_INDENT: &str = "│   ";
+
+#[derive(Copy, Clone)]
+enum Indents {
+    Bar,
+    Blank,
+}
 
 /// Draw the tree, starting with the given directory.
 pub fn draw_rooted<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) {
     let (tree, root) = collect_fs(dir);
 
     draw_root(writer, dir.as_ref());
-    draw_tree(writer, &tree, root);
+    draw_tree(writer, &tree, root, &mut vec![]);
 }
 
-fn draw_tree<W: Write>(writer: &mut W, tree: &Arena<DirEntry>, root: NodeId) {
-    let root_node = &tree[root];
-
+fn draw_tree<W: Write>(
+    writer: &mut W,
+    tree: &Arena<DirEntry>,
+    root: NodeId,
+    indents: &mut Vec<Indents>,
+) {
     for child in root.children(&tree) {
         let de = &tree[child].data;
+        let last = Some(child) == tree[root].last_child();
 
-        draw_branch(
-            writer,
-            de.path(),
-            Some(child) == root_node.last_child(),
-            de.depth() - 1,
-        );
+        let mut idt = String::new();
+        indents.iter().for_each(|i| {
+            idt.push_str(match *i {
+                Indents::Bar => BAR_INDENT,
+                Indents::Blank => BLANK_INDENT,
+            })
+        });
+        draw_branch(writer, de.path(), last, &idt);
 
-        draw_tree(writer, &tree, child);
+        indents.push(if last { Indents::Blank } else { Indents::Bar });
+        draw_tree(writer, tree, child, indents);
     }
+
+    indents.pop();
 }
 
-fn draw_branch<W: Write>(writer: &mut W, entry: &Path, last: bool, indent: usize) {
+fn draw_branch<W: Write>(writer: &mut W, entry: &Path, last: bool, prefix: &str) {
     let file_name = match entry.file_name() {
         Some(name) => name,
         None => return,
@@ -45,7 +61,7 @@ fn draw_branch<W: Write>(writer: &mut W, entry: &Path, last: bool, indent: usize
     writeln!(
         writer,
         "{}{} {}",
-        iter::repeat(INDENT).take(indent).collect::<String>(),
+        prefix,
         if last { END_BRANCH } else { MID_BRANCH },
         file_name,
         ).unwrap();
@@ -85,9 +101,9 @@ mod tests {
                 "{}\n{} {}\n{} {}\n",
                 dir.display(),
                 MID_BRANCH,
-                "myotherfile",
-                END_BRANCH,
                 "myfile",
+                END_BRANCH,
+                "myotherfile",
             );
 
         assert_eq!(exp, draw_to_string(&dir));
@@ -102,9 +118,9 @@ mod tests {
                 "{}\n{} {}\n{} {}\n",
                 dir.display(),
                 MID_BRANCH,
-                "myotherfile",
-                END_BRANCH,
                 "myfile",
+                END_BRANCH,
+                "myotherfile",
             );
 
         assert_eq!(exp, draw_to_string(&dir));
@@ -116,15 +132,15 @@ mod tests {
 
         let exp =
             format!(
-            "{}\n{} {}\n{} {}\n{}{} {}\n",
+            "{}\n{} {}\n{}{} {}\n{} {}\n",
             dir.display(),
             MID_BRANCH,
-            "myotherfile",
-            END_BRANCH,
             "mydir",
-            INDENT,
+            BAR_INDENT,
             END_BRANCH,
             "myfile",
+            END_BRANCH,
+            "myotherfile",
          );
 
         assert_eq!(exp, draw_to_string(&dir));

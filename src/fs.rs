@@ -9,6 +9,7 @@ fn get_walker<P: AsRef<Path>>(dir: &P) -> iter::Peekable<Walk> {
     WalkBuilder::new(dir)
         .hidden(false)
         .git_ignore(true)
+        .sort_by_file_name(|f1, f2| f1.cmp(f2))
         .build()
         .peekable()
 }
