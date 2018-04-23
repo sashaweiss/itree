@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::io::Write;
+use std::collections::HashMap;
 
 use indextree::{Arena, NodeId};
 use ignore::DirEntry;
@@ -18,12 +19,23 @@ enum Indents {
     Blank,
 }
 
+type Location = (usize, usize);
+type TreeMap = HashMap<&NodeId, Location>;
+struct DrawnTree {
+    tree: Arena<DirEntry>,
+    root: NodeId,
+    map: TreeMap,
+}
+
 /// Draw the tree, starting with the given directory.
-pub fn draw_rooted<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) {
+pub fn draw_rooted<W: Write, P: AsRef<Path>>(writer: &mut W, dir: &P) -> DrawnTree {
     let (tree, root) = collect_fs(dir);
 
+    let mut map = TreeMap::new();
     draw_root(writer, dir.as_ref());
     draw_tree(writer, &tree, root, &mut vec![]);
+
+    DrawnTree { tree, root, map }
 }
 
 fn draw_tree<W: Write>(
@@ -31,22 +43,31 @@ fn draw_tree<W: Write>(
     tree: &Arena<DirEntry>,
     root: NodeId,
     indents: &mut Vec<Indents>,
+    map: &mut TreeMap,
 ) {
+    let mut loc = map[root];
+
     for child in root.children(&tree) {
         let de = &tree[child].data;
         let last = Some(child) == tree[root].last_child();
 
         let mut idt = String::new();
-        indents.iter().for_each(|i| {
+        for i in indents {
+            loc.0 += 4;
             idt.push_str(match *i {
                 Indents::Bar => BAR_INDENT,
                 Indents::Blank => BLANK_INDENT,
-            })
-        });
+            });
+        }
+        // NOTE TO ME:
+        // maybe have this method return how many lines it ended up printing?
+        // cuz then loc.1 needs to get updated
+        // so we can update the treemap
+
         draw_branch(writer, de.path(), last, &idt);
 
         indents.push(if last { Indents::Blank } else { Indents::Bar });
-        draw_tree(writer, tree, child, indents);
+        draw_tree(writer, tree, child, indents, map);
     }
 
     indents.pop();

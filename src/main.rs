@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 extern crate termion;
 extern crate indextree;
 extern crate ignore;
@@ -7,41 +5,15 @@ extern crate ignore;
 mod cursor;
 mod draw;
 mod fs;
+mod navigate;
 
 use std::io;
 
-use termion::event::Key;
-use termion::input::TermRead;
-use termion::raw::IntoRawMode;
-
 fn main() {
-    draw::draw_rooted(&mut io::stdout(), &".");
-}
-
-fn interact(cur: &mut cursor::Cursor) {
-    let stdin = io::stdin();
+    let drawn_tree = draw::draw_rooted(&mut io::stdout(), &".");
 
     // The following is necessary to properly read from stdin.
     // For details, see: https://github.com/ticki/termion/issues/42
-    let _stdout = io::stdout().into_raw_mode().unwrap();
-
-    cur.draw();
-    for c in stdin.keys() {
-        match c.unwrap() {
-            Key::Char('q') | Key::Ctrl('c') => break,
-            Key::Left => {
-                cur.left();
-            }
-            Key::Right => {
-                cur.right();
-            }
-            Key::Up => {
-                cur.up();
-            }
-            Key::Down => {
-                cur.down();
-            }
-            _ => {}
-        }
-    }
+    // let _stdout = io::stdout().into_raw_mode().unwrap();
+    // fs::navigate(io::stdin(), cursor::new_cursor_bound_to_term(), tree, root);
 }
