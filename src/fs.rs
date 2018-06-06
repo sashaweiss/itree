@@ -1,8 +1,14 @@
 use std::iter;
 use std::path::Path;
 
-use ignore::{WalkBuilder, Walk, DirEntry};
+use ignore::{DirEntry, Walk, WalkBuilder};
 use indextree::{Arena, NodeId};
+
+#[derive(Debug)]
+pub struct TreeEntry {
+    pub de: DirEntry,
+    pub loc: (usize, usize),
+}
 
 /// Create an iterator over the FS, rooted at dir.
 fn get_walker<P: AsRef<Path>>(dir: &P) -> iter::Peekable<Walk> {
@@ -22,15 +28,15 @@ fn add_child_to_tree<T>(tree: &mut Arena<T>, node: NodeId, data: T) -> NodeId {
 }
 
 /// Collect an Arena representation of the file system.
-pub fn collect_fs<P: AsRef<Path>>(dir: &P) -> (Arena<DirEntry>, NodeId) {
+pub fn collect_fs<P: AsRef<Path>>(dir: &P) -> (Arena<TreeEntry>, NodeId) {
     let mut walk = get_walker(dir);
 
-    let mut tree = Arena::<DirEntry>::new();
+    let mut tree = Arena::<TreeEntry>::new();
     let root: NodeId;
 
     // Get the root node
     if let Some(Ok(de)) = walk.next() {
-        root = tree.new_node(de);
+        root = tree.new_node(TreeEntry { de, loc: (0, 0) });
     } else {
         panic!("Failed to get the root!");
     }
@@ -42,10 +48,16 @@ pub fn collect_fs<P: AsRef<Path>>(dir: &P) -> (Arena<DirEntry>, NodeId) {
     }
 
     let mut curr = root;
+    let mut n_seen = 0;
     while let Some(Ok(de)) = walk.next() {
+        let te = TreeEntry {
+            loc: (de.depth(), n_seen),
+            de,
+        };
+
         match match walk.peek() {
             Some(&Ok(ref next)) => {
-                let (nd, dd) = (next.depth(), de.depth());
+                let (nd, dd) = (next.depth(), te.de.depth());
 
                 if nd < dd {
                     DepthChange::Last(dd - nd)
@@ -59,18 +71,20 @@ pub fn collect_fs<P: AsRef<Path>>(dir: &P) -> (Arena<DirEntry>, NodeId) {
             None => DepthChange::Last(0),
         } {
             DepthChange::NextIsFirst => {
-                curr = add_child_to_tree(&mut tree, curr, de);
+                curr = add_child_to_tree(&mut tree, curr, te);
             }
             DepthChange::Isnt => {
-                add_child_to_tree(&mut tree, curr, de);
+                add_child_to_tree(&mut tree, curr, te);
             }
             DepthChange::Last(d) => {
-                add_child_to_tree(&mut tree, curr, de);
+                add_child_to_tree(&mut tree, curr, te);
                 for _ in 0..d {
                     curr = tree[curr].parent().expect("The node should have a parent");
                 }
             }
         }
+
+        n_seen += 1;
     }
 
     (tree, root)
@@ -80,8 +94,8 @@ pub fn collect_fs<P: AsRef<Path>>(dir: &P) -> (Arena<DirEntry>, NodeId) {
 mod tests {
     use super::*;
 
-    use std::path::PathBuf;
     use std::ffi::OsStr;
+    use std::path::PathBuf;
 
     fn test_dir(dir: &str) -> PathBuf {
         PathBuf::new().join("resources/test").join(dir)
@@ -98,10 +112,10 @@ mod tests {
     #[test]
     fn test_collect_fs_abs_path() {
         let (tree, root) = collect_fs(&abs_test_dir("simple"));
-        assert_eq!("simple", tree[root].data.file_name());
+        assert_eq!("simple", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
-            .map(|nid| tree[nid].data.path().file_name().unwrap())
+            .map(|nid| tree[nid].data.de.path().file_name().unwrap())
             .collect::<Vec<&OsStr>>();
 
         assert!(children.contains(&to_osstr("myfile")));
@@ -111,10 +125,10 @@ mod tests {
     #[test]
     fn test_collect_fs_rel_path() {
         let (tree, root) = collect_fs(&test_dir("simple"));
-        assert_eq!("simple", tree[root].data.file_name());
+        assert_eq!("simple", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
-            .map(|nid| tree[nid].data.path().file_name().unwrap())
+            .map(|nid| tree[nid].data.de.path().file_name().unwrap())
             .collect::<Vec<&OsStr>>();
 
         assert!(children.contains(&to_osstr("myfile")));
@@ -124,25 +138,24 @@ mod tests {
     #[test]
     fn test_collect_fs_dir() {
         let (tree, root) = collect_fs(&test_dir("one_dir"));
-        assert_eq!("one_dir", tree[root].data.file_name());
+        assert_eq!("one_dir", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
-            .map(|nid| tree[nid].data.path().file_name().unwrap())
+            .map(|nid| tree[nid].data.de.path().file_name().unwrap())
             .collect::<Vec<&OsStr>>();
 
         assert!(children.contains(&to_osstr("mydir")));
         assert!(children.contains(&to_osstr("myotherfile")));
 
         let dir_node = root.children(&tree)
-            .filter(|nid| {
-                tree[*nid].data.path().file_name() == Some(to_osstr("mydir"))
-            })
+            .filter(|nid| tree[*nid].data.de.path().file_name() == Some(to_osstr("mydir")))
             .next()
             .unwrap();
 
         assert_eq!(
             tree[dir_node.children(&tree).next().unwrap()]
                 .data
+                .de
                 .path()
                 .file_name(),
             Some(to_osstr("myfile"))

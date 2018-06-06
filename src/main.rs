@@ -1,16 +1,14 @@
-extern crate termion;
-extern crate indextree;
 extern crate ignore;
+extern crate indextree;
+extern crate termion;
 
-mod cursor;
-mod draw;
 mod fs;
-mod navigate;
+mod tree;
 
 use std::io;
 
 fn main() {
-    let drawn_tree = draw::draw_rooted(&mut io::stdout(), &".");
+    tree::Tree::new(&".").draw(&mut io::stdout());
 
     // The following is necessary to properly read from stdin.
     // For details, see: https://github.com/ticki/termion/issues/42
