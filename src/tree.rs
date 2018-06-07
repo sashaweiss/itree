@@ -59,9 +59,38 @@ impl Tree {
         }
     }
 
-    // pub fn focused<'a>(&'a self) -> &'a TreeEntry {
-    //     &self.tree[self.focused].data
-    // }
+    #[allow(dead_code)]
+    pub fn focused<'a>(&'a self) -> &'a TreeEntry {
+        &self.tree[self.focused].data
+    }
+
+    pub fn focus_up(&mut self) {
+        self.focused = match self.tree[self.focused].parent() {
+            None => self.focused,
+            Some(p) => p,
+        };
+    }
+
+    pub fn focus_down(&mut self) {
+        self.focused = match self.tree[self.focused].first_child() {
+            None => self.focused,
+            Some(ps) => ps,
+        };
+    }
+
+    pub fn focus_left(&mut self) {
+        self.focused = match self.tree[self.focused].previous_sibling() {
+            None => self.focused,
+            Some(ps) => ps,
+        };
+    }
+
+    pub fn focus_right(&mut self) {
+        self.focused = match self.tree[self.focused].next_sibling() {
+            None => self.focused,
+            Some(ps) => ps,
+        };
+    }
 }
 
 impl Tree {
@@ -216,5 +245,26 @@ mod tests {
         );
 
         assert_eq!(exp, draw_to_string(&dir));
+    }
+
+    #[test]
+    fn test_focus() {
+        let mut t = Tree::new(&test_dir(""));
+        assert_eq!("test", t.focused().name);
+        t.focus_up();
+        assert_eq!("test", t.focused().name);
+
+        t.focus_down();
+        assert_eq!("one_dir", t.focused().name);
+        t.focus_left();
+        assert_eq!("one_dir", t.focused().name);
+
+        t.focus_right();
+        assert_eq!("simple", t.focused().name);
+        t.focus_right();
+        assert_eq!("simple", t.focused().name);
+
+        t.focus_up();
+        assert_eq!("test", t.focused().name);
     }
 }
