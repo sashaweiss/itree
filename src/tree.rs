@@ -3,13 +3,10 @@ use std::io::Write;
 use std::path::Path;
 use std::{fmt, io};
 
+use ignore::DirEntry;
 use indextree::{Arena, NodeId};
 
-use termion;
-use termion::clear::All;
-use termion::cursor::Goto;
-
-use fs::{collect_fs, TreeEntry};
+use fs::fs_to_tree;
 
 pub const MID_BRANCH: &str = "├──";
 pub const END_BRANCH: &str = "└──";
@@ -18,9 +15,17 @@ pub const BLANK_INDENT: &str = "    ";
 pub const BAR_INDENT: &str = "│   ";
 
 #[derive(Debug)]
+pub struct TreeEntry {
+    pub de: DirEntry,
+    pub loc: (usize, usize),
+    pub name: String,
+}
+
+#[derive(Debug)]
 pub struct Tree {
     tree: Arena<TreeEntry>,
     root: NodeId,
+    focused: NodeId,
     lines: Vec<String>,
 }
 
@@ -36,7 +41,7 @@ impl fmt::Display for Tree {
 
 impl Tree {
     pub fn new<P: AsRef<Path>>(dir: &P) -> Self {
-        let (tree, root) = collect_fs(dir);
+        let (tree, root) = fs_to_tree(dir);
 
         let mut v = Vec::new();
         Tree::draw(&mut v, &tree, root);
@@ -46,28 +51,29 @@ impl Tree {
             .map(|e| e.to_owned())
             .collect::<Vec<String>>();
 
-        Self { tree, root, lines }
+        Self {
+            tree,
+            root,
+            focused: root,
+            lines,
+        }
     }
+
+    // pub fn focused<'a>(&'a self) -> &'a TreeEntry {
+    //     &self.tree[self.focused].data
+    // }
 }
 
 impl Tree {
-    /// Render lines of the tree in the interval [top, bottom).
-    fn render<W: Write>(&self, writer: &mut W, top: usize, bottom: usize) -> io::Result<()> {
-        for i in top..min(self.lines.len(), bottom) {
+    /// Render n lines of the tree, starting from the focused node.
+    pub fn render<W: Write>(&self, writer: &mut W, n: usize) -> io::Result<()> {
+        let (_, y) = self.tree[self.focused].data.loc;
+
+        for i in y..min(self.lines.len(), y + n) {
             writeln!(writer, "{}", self.lines[i])?;
         }
 
         Ok(())
-    }
-
-    pub fn render_to_term(&self, start: usize) -> io::Result<()> {
-        let mut stdout = io::stdout();
-
-        print!("{}", All);
-        print!("{}", Goto(1, 1));
-
-        let (_, y) = termion::terminal_size()?;
-        self.render(&mut stdout, start, start + y as usize)
     }
 }
 
@@ -93,7 +99,7 @@ impl Tree {
         indents: &mut Vec<Indent>,
     ) {
         for child in root.children(&tree) {
-            let de = &tree[child].data.de;
+            let te = &tree[child].data;
             let last = Some(child) == tree[root].last_child();
 
             let mut idt = String::new();
@@ -104,7 +110,7 @@ impl Tree {
                 });
             }
 
-            Tree::draw_branch(writer, de.path(), last, &idt);
+            Tree::draw_branch(writer, &te.name, last, &idt);
 
             indents.push(if last { Indent::Blank } else { Indent::Bar });
             Tree::draw_from(writer, tree, child, indents);
@@ -113,18 +119,13 @@ impl Tree {
         indents.pop();
     }
 
-    fn draw_branch<W: Write>(writer: &mut W, entry: &Path, last: bool, prefix: &str) {
-        let file_name = match entry.file_name() {
-            Some(name) => name.to_str().unwrap_or("<node name non-UTF8"),
-            None => "<node name unknown>",
-        };
-
+    fn draw_branch<W: Write>(writer: &mut W, name: &str, last: bool, prefix: &str) {
         writeln!(
             writer,
             "{}{} {}",
             prefix,
             if last { END_BRANCH } else { MID_BRANCH },
-            file_name,
+            name,
         ).unwrap();
     }
 }

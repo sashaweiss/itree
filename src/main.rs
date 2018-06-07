@@ -3,13 +3,14 @@ extern crate indextree;
 extern crate termion;
 
 mod fs;
+mod term;
 mod tree;
 
 fn main() {
     let t = tree::Tree::new(&".");
     // print!("{}", t);
 
-    t.render_to_term(0).unwrap();
+    term::render_to_stdout(&t).unwrap();
 
     // The following is necessary to properly read from stdin.
     // For details, see: https://github.com/ticki/termion/issues/42

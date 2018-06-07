@@ -1,14 +1,10 @@
 use std::iter;
 use std::path::Path;
 
-use ignore::{DirEntry, Walk, WalkBuilder};
+use ignore::{Walk, WalkBuilder};
 use indextree::{Arena, NodeId};
 
-#[derive(Debug)]
-pub struct TreeEntry {
-    pub de: DirEntry,
-    pub loc: (usize, usize),
-}
+use tree::TreeEntry;
 
 /// Create an iterator over the FS, rooted at dir.
 fn get_walker<P: AsRef<Path>>(dir: &P) -> iter::Peekable<Walk> {
@@ -27,8 +23,15 @@ fn add_child_to_tree<T>(tree: &mut Arena<T>, node: NodeId, data: T) -> NodeId {
     new_node
 }
 
+fn path_to_string<P: AsRef<Path>>(p: &P) -> String {
+    match p.as_ref().file_name() {
+        Some(name) => name.to_str().unwrap_or("<node name non-UTF8"),
+        None => "<node name unknown>",
+    }.to_owned()
+}
+
 /// Collect an Arena representation of the file system.
-pub fn collect_fs<P: AsRef<Path>>(dir: &P) -> (Arena<TreeEntry>, NodeId) {
+pub fn fs_to_tree<P: AsRef<Path>>(dir: &P) -> (Arena<TreeEntry>, NodeId) {
     let mut walk = get_walker(dir);
 
     let mut tree = Arena::<TreeEntry>::new();
@@ -36,7 +39,11 @@ pub fn collect_fs<P: AsRef<Path>>(dir: &P) -> (Arena<TreeEntry>, NodeId) {
 
     // Get the root node
     if let Some(Ok(de)) = walk.next() {
-        root = tree.new_node(TreeEntry { de, loc: (0, 0) });
+        root = tree.new_node(TreeEntry {
+            de,
+            loc: (0, 0),
+            name: path_to_string(dir),
+        });
     } else {
         panic!("Failed to get the root!");
     }
@@ -52,7 +59,8 @@ pub fn collect_fs<P: AsRef<Path>>(dir: &P) -> (Arena<TreeEntry>, NodeId) {
     while let Some(Ok(de)) = walk.next() {
         let te = TreeEntry {
             loc: (de.depth(), n_seen),
-            de,
+            name: path_to_string(&de.path()),
+            de: de,
         };
 
         match match walk.peek() {
@@ -111,7 +119,7 @@ mod tests {
 
     #[test]
     fn test_collect_fs_abs_path() {
-        let (tree, root) = collect_fs(&abs_test_dir("simple"));
+        let (tree, root) = fs_to_tree(&abs_test_dir("simple"));
         assert_eq!("simple", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
@@ -124,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_collect_fs_rel_path() {
-        let (tree, root) = collect_fs(&test_dir("simple"));
+        let (tree, root) = fs_to_tree(&test_dir("simple"));
         assert_eq!("simple", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
@@ -137,7 +145,7 @@ mod tests {
 
     #[test]
     fn test_collect_fs_dir() {
-        let (tree, root) = collect_fs(&test_dir("one_dir"));
+        let (tree, root) = fs_to_tree(&test_dir("one_dir"));
         assert_eq!("one_dir", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
