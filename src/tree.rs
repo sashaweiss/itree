@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp::{min, Ordering};
 use std::io::Write;
 use std::path::Path;
 use std::{fmt, io};
@@ -65,11 +65,30 @@ impl Tree {
 }
 
 impl Tree {
-    /// Render n lines of the tree, starting from the focused node.
-    pub fn render<W: Write>(&self, writer: &mut W, n: usize) -> io::Result<()> {
+    /// Render n lines of the tree, around the focused node.
+    ///
+    /// n/2 lines above the node and n/2 lines below will be rendered.
+    /// If the focus is within n/2 lines of the top or bottom of the tree,
+    /// the remaining space will be used on the other side.
+    ///
+    /// TODO: handle line wrappings
+    pub fn render_around_focus<W: Write>(&self, writer: &mut W, n: usize) -> io::Result<()> {
         let (_, y) = self.tree[self.focused].data.loc;
+        let space = n / 2;
 
-        for i in y..min(self.lines.len(), y + n) {
+        let (start, diff) = match space.cmp(&y) {
+            Ordering::Less | Ordering::Equal => (y - space, 0),
+            Ordering::Greater => (0, space - y),
+        };
+
+        let end = min(self.lines.len(), y + space + diff + n % 2);
+
+        self.render(writer, start, end)
+    }
+
+    /// Render the lines in the range [top, bottom).
+    pub fn render<W: Write>(&self, writer: &mut W, top: usize, bottom: usize) -> io::Result<()> {
+        for i in top..bottom {
             writeln!(writer, "{}", self.lines[i])?;
         }
 
