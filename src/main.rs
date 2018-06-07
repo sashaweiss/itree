@@ -5,10 +5,11 @@ extern crate termion;
 mod fs;
 mod tree;
 
-use std::io;
-
 fn main() {
-    tree::Tree::new(&".").draw(&mut io::stdout());
+    let t = tree::Tree::new(&".");
+    // print!("{}", t);
+
+    t.render_to_term(0).unwrap();
 
     // The following is necessary to properly read from stdin.
     // For details, see: https://github.com/ticki/termion/issues/42

@@ -1,7 +1,13 @@
+use std::cmp::min;
 use std::io::Write;
 use std::path::Path;
+use std::{fmt, io};
 
 use indextree::{Arena, NodeId};
+
+use termion;
+use termion::clear::All;
+use termion::cursor::Goto;
 
 use fs::{collect_fs, TreeEntry};
 
@@ -11,37 +17,84 @@ pub const END_BRANCH: &str = "└──";
 pub const BLANK_INDENT: &str = "    ";
 pub const BAR_INDENT: &str = "│   ";
 
-#[derive(Debug, Copy, Clone)]
-enum Indent {
-    Bar,
-    Blank,
-}
-
 #[derive(Debug)]
 pub struct Tree {
     tree: Arena<TreeEntry>,
     root: NodeId,
+    lines: Vec<String>,
+}
+
+impl fmt::Display for Tree {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for l in &self.lines {
+            writeln!(f, "{}", l)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Tree {
     pub fn new<P: AsRef<Path>>(dir: &P) -> Self {
         let (tree, root) = collect_fs(dir);
 
-        Self { tree, root }
+        let mut v = Vec::new();
+        Tree::draw(&mut v, &tree, root);
+
+        let lines = String::from_utf8_lossy(&v)
+            .lines()
+            .map(|e| e.to_owned())
+            .collect::<Vec<String>>();
+
+        Self { tree, root, lines }
+    }
+}
+
+impl Tree {
+    /// Render lines of the tree in the interval [top, bottom).
+    fn render<W: Write>(&self, writer: &mut W, top: usize, bottom: usize) -> io::Result<()> {
+        for i in top..min(self.lines.len(), bottom) {
+            writeln!(writer, "{}", self.lines[i])?;
+        }
+
+        Ok(())
     }
 
-    pub fn draw<W: Write>(&self, writer: &mut W) {
+    pub fn render_to_term(&self, start: usize) -> io::Result<()> {
+        let mut stdout = io::stdout();
+
+        print!("{}", All);
+        print!("{}", Goto(1, 1));
+
+        let (_, y) = termion::terminal_size()?;
+        self.render(&mut stdout, start, start + y as usize)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Indent {
+    Bar,
+    Blank,
+}
+
+impl Tree {
+    fn draw<W: Write>(writer: &mut W, tree: &Arena<TreeEntry>, root: NodeId) {
         // Draw the root
-        writeln!(writer, "{}", self.tree[self.root].data.de.path().display()).unwrap();
+        writeln!(writer, "{}", tree[root].data.de.path().display()).unwrap();
 
         // Draw the rest of the tree
-        self.draw_from(writer, self.root, &mut vec![]);
+        Tree::draw_from(writer, &tree, root, &mut vec![]);
     }
 
-    fn draw_from<W: Write>(&self, writer: &mut W, root: NodeId, indents: &mut Vec<Indent>) {
-        for child in root.children(&self.tree) {
-            let de = &self.tree[child].data.de;
-            let last = Some(child) == self.tree[root].last_child();
+    fn draw_from<W: Write>(
+        writer: &mut W,
+        tree: &Arena<TreeEntry>,
+        root: NodeId,
+        indents: &mut Vec<Indent>,
+    ) {
+        for child in root.children(&tree) {
+            let de = &tree[child].data.de;
+            let last = Some(child) == tree[root].last_child();
 
             let mut idt = String::new();
             for i in indents.iter() {
@@ -51,16 +104,16 @@ impl Tree {
                 });
             }
 
-            self.draw_branch(writer, de.path(), last, &idt);
+            Tree::draw_branch(writer, de.path(), last, &idt);
 
             indents.push(if last { Indent::Blank } else { Indent::Bar });
-            self.draw_from(writer, child, indents);
+            Tree::draw_from(writer, tree, child, indents);
         }
 
         indents.pop();
     }
 
-    fn draw_branch<W: Write>(&self, writer: &mut W, entry: &Path, last: bool, prefix: &str) {
+    fn draw_branch<W: Write>(writer: &mut W, entry: &Path, last: bool, prefix: &str) {
         let file_name = match entry.file_name() {
             Some(name) => name.to_str().unwrap_or("<node name non-UTF8"),
             None => "<node name unknown>",
@@ -75,18 +128,6 @@ impl Tree {
         ).unwrap();
     }
 }
-
-// pub fn corners() -> ((u16, u16), (u16, u16)) {
-//     let mut stdout = ::std::io::stdout().into_raw_mode().unwrap();
-
-//     let (_, _tl_y) = stdout.cursor_pos().unwrap();
-//     let (ogn_x, ogn_y) = (1, _tl_y - 1); // Termion and Tui aren't playing nice
-
-//     let (_br_x, _br_y) = terminal_size().unwrap();
-//     let (far_x, far_y) = (_br_x - ogn_x, _br_y - ogn_y);
-
-//     ((ogn_x, ogn_y), (far_x, far_y))
-// }
 
 #[cfg(test)]
 mod tests {
@@ -103,10 +144,7 @@ mod tests {
     }
 
     fn draw_to_string(dir: &PathBuf) -> String {
-        let mut actual = Vec::new();
-        Tree::new(dir).draw(&mut actual);
-
-        String::from_utf8(actual).unwrap()
+        format!("{}", Tree::new(dir))
     }
 
     #[test]
