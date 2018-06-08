@@ -1,10 +1,14 @@
 use std::iter;
 use std::path::Path;
 
-use ignore::{Walk, WalkBuilder};
+use ignore::{DirEntry, Walk, WalkBuilder};
 use indextree::{Arena, NodeId};
 
-use tree::TreeEntry;
+#[derive(Debug)]
+pub struct FsEntry {
+    pub de: DirEntry,
+    pub name: String,
+}
 
 /// Create an iterator over the FS, rooted at dir.
 fn get_walker<P: AsRef<Path>>(dir: &P) -> iter::Peekable<Walk> {
@@ -31,17 +35,16 @@ fn path_to_string<P: AsRef<Path>>(p: &P) -> String {
 }
 
 /// Collect an Arena representation of the file system.
-pub fn fs_to_tree<P: AsRef<Path>>(dir: &P) -> (Arena<TreeEntry>, NodeId) {
+pub fn fs_to_tree<P: AsRef<Path>>(dir: &P) -> (Arena<FsEntry>, NodeId) {
     let mut walk = get_walker(dir);
 
-    let mut tree = Arena::<TreeEntry>::new();
+    let mut tree = Arena::<FsEntry>::new();
     let root: NodeId;
 
     // Get the root node
     if let Some(Ok(de)) = walk.next() {
-        root = tree.new_node(TreeEntry {
+        root = tree.new_node(FsEntry {
             de,
-            loc: (0, 0),
             name: path_to_string(dir),
         });
     } else {
@@ -55,10 +58,8 @@ pub fn fs_to_tree<P: AsRef<Path>>(dir: &P) -> (Arena<TreeEntry>, NodeId) {
     }
 
     let mut curr = root;
-    let mut n_seen = 0;
     while let Some(Ok(de)) = walk.next() {
-        let te = TreeEntry {
-            loc: (de.depth(), n_seen),
+        let te = FsEntry {
             name: path_to_string(&de.path()),
             de: de,
         };
@@ -91,8 +92,6 @@ pub fn fs_to_tree<P: AsRef<Path>>(dir: &P) -> (Arena<TreeEntry>, NodeId) {
                 }
             }
         }
-
-        n_seen += 1;
     }
 
     (tree, root)

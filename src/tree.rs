@@ -1,12 +1,12 @@
 use std::cmp::{min, Ordering};
+use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
 use std::{fmt, io};
 
-use ignore::DirEntry;
 use indextree::{Arena, NodeId};
 
-use fs::fs_to_tree;
+use fs::{fs_to_tree, FsEntry};
 
 pub const MID_BRANCH: &str = "├──";
 pub const END_BRANCH: &str = "└──";
@@ -15,24 +15,46 @@ pub const BLANK_INDENT: &str = "    ";
 pub const BAR_INDENT: &str = "│   ";
 
 #[derive(Debug)]
-pub struct TreeEntry {
-    pub de: DirEntry,
-    pub loc: (usize, usize),
-    pub name: String,
+struct TreeLine {
+    node: NodeId,
+    prefix: String,
+}
+
+#[derive(Debug)]
+struct TreeLines {
+    inds: HashMap<NodeId, usize>,
+    lines: Vec<TreeLine>,
+    count: usize,
+}
+
+impl TreeLines {
+    fn new() -> Self {
+        TreeLines {
+            inds: HashMap::new(),
+            lines: Vec::new(),
+            count: 0,
+        }
+    }
+
+    fn add(&mut self, node: NodeId, prefix: String) {
+        self.inds.insert(node, self.count);
+        self.lines.push(TreeLine { node, prefix });
+        self.count += 1;
+    }
 }
 
 #[derive(Debug)]
 pub struct Tree {
-    tree: Arena<TreeEntry>,
+    tree: Arena<FsEntry>,
     root: NodeId,
     focused: NodeId,
-    lines: Vec<String>,
+    lines: TreeLines,
 }
 
 impl fmt::Display for Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for l in &self.lines {
-            writeln!(f, "{}", l)?;
+        for l in &self.lines.lines {
+            writeln!(f, "{} {}", l.prefix, self.tree[l.node].data.name)?;
         }
 
         Ok(())
@@ -43,13 +65,7 @@ impl Tree {
     pub fn new<P: AsRef<Path>>(dir: &P) -> Self {
         let (tree, root) = fs_to_tree(dir);
 
-        let mut v = Vec::new();
-        Tree::draw(&mut v, &tree, root);
-
-        let lines = String::from_utf8_lossy(&v)
-            .lines()
-            .map(|e| e.to_owned())
-            .collect::<Vec<String>>();
+        let lines = Tree::draw(&tree, root);
 
         Self {
             tree,
@@ -60,10 +76,11 @@ impl Tree {
     }
 
     #[allow(dead_code)]
-    pub fn focused<'a>(&'a self) -> &'a TreeEntry {
+    pub fn focused<'a>(&'a self) -> &'a FsEntry {
         &self.tree[self.focused].data
     }
 
+    #[allow(dead_code)]
     pub fn focus_up(&mut self) {
         self.focused = match self.tree[self.focused].parent() {
             None => self.focused,
@@ -71,6 +88,7 @@ impl Tree {
         };
     }
 
+    #[allow(dead_code)]
     pub fn focus_down(&mut self) {
         self.focused = match self.tree[self.focused].first_child() {
             None => self.focused,
@@ -78,6 +96,7 @@ impl Tree {
         };
     }
 
+    #[allow(dead_code)]
     pub fn focus_left(&mut self) {
         self.focused = match self.tree[self.focused].previous_sibling() {
             None => self.focused,
@@ -85,6 +104,7 @@ impl Tree {
         };
     }
 
+    #[allow(dead_code)]
     pub fn focus_right(&mut self) {
         self.focused = match self.tree[self.focused].next_sibling() {
             None => self.focused,
@@ -102,7 +122,7 @@ impl Tree {
     ///
     /// TODO: handle line wrappings
     pub fn render_around_focus<W: Write>(&self, writer: &mut W, n: usize) -> io::Result<()> {
-        let (_, y) = self.tree[self.focused].data.loc;
+        let y = self.lines.inds[&self.focused];
         let space = n / 2;
 
         let (start, diff) = match space.cmp(&y) {
@@ -110,7 +130,7 @@ impl Tree {
             Ordering::Greater => (0, space - y),
         };
 
-        let end = min(self.lines.len(), y + space + diff + n % 2);
+        let end = min(self.lines.count, y + space + diff + n % 2);
 
         self.render(writer, start, end)
     }
@@ -118,7 +138,8 @@ impl Tree {
     /// Render the lines in the range [top, bottom).
     pub fn render<W: Write>(&self, writer: &mut W, top: usize, bottom: usize) -> io::Result<()> {
         for i in top..bottom {
-            writeln!(writer, "{}", self.lines[i])?;
+            let line = &self.lines.lines[i];
+            writeln!(writer, "{} {}", line.prefix, self.tree[line.node].data.name)?;
         }
 
         Ok(())
@@ -132,49 +153,43 @@ enum Indent {
 }
 
 impl Tree {
-    fn draw<W: Write>(writer: &mut W, tree: &Arena<TreeEntry>, root: NodeId) {
+    fn draw(tree: &Arena<FsEntry>, root: NodeId) -> TreeLines {
+        let mut tree_lines = TreeLines::new();
+
         // Draw the root
-        writeln!(writer, "{}", tree[root].data.de.path().display()).unwrap();
+        tree_lines.add(root, String::new());
 
         // Draw the rest of the tree
-        Tree::draw_from(writer, &tree, root, &mut vec![]);
+        Tree::draw_from(&mut tree_lines, &tree, root, &mut vec![]);
+
+        tree_lines
     }
 
-    fn draw_from<W: Write>(
-        writer: &mut W,
-        tree: &Arena<TreeEntry>,
+    fn draw_from(
+        tree_lines: &mut TreeLines,
+        tree: &Arena<FsEntry>,
         root: NodeId,
         indents: &mut Vec<Indent>,
     ) {
         for child in root.children(&tree) {
-            let te = &tree[child].data;
             let last = Some(child) == tree[root].last_child();
 
-            let mut idt = String::new();
+            let mut prefix = String::new();
             for i in indents.iter() {
-                idt.push_str(match *i {
+                prefix.push_str(match *i {
                     Indent::Bar => BAR_INDENT,
                     Indent::Blank => BLANK_INDENT,
                 });
             }
+            prefix.push_str(if last { END_BRANCH } else { MID_BRANCH });
 
-            Tree::draw_branch(writer, &te.name, last, &idt);
+            tree_lines.add(child, prefix);
 
             indents.push(if last { Indent::Blank } else { Indent::Bar });
-            Tree::draw_from(writer, tree, child, indents);
+            Tree::draw_from(tree_lines, tree, child, indents);
         }
 
         indents.pop();
-    }
-
-    fn draw_branch<W: Write>(writer: &mut W, name: &str, last: bool, prefix: &str) {
-        writeln!(
-            writer,
-            "{}{} {}",
-            prefix,
-            if last { END_BRANCH } else { MID_BRANCH },
-            name,
-        ).unwrap();
     }
 }
 
