@@ -1,4 +1,4 @@
-use std::cmp::{min, Ordering};
+use std::cmp::{max, min, Ordering};
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
@@ -124,20 +124,38 @@ impl Tree {
     /// the remaining space will be used on the other side.
     ///
     /// TODO: handle line wrappings
-    pub fn render_around_focus<W: Write>(&self, writer: &mut W, n: usize) -> io::Result<()> {
-        let y = self.lines.inds[&self.focused];
+    pub fn render_around_focus<W: Write>(&self, writer: &mut W, n: i64) -> io::Result<()> {
+        let y = self.lines.inds[&self.focused] as i64;
         let space = n / 2;
 
-        let (start, diff) = match space.cmp(&y) {
-            Ordering::Less | Ordering::Equal => (y - space, 0),
-            Ordering::Greater => (0, space - y),
-        };
+        // The range is gonna be size <= n
+        //
+        // Want to start n/2 above y, or 0 if that's negative.
+        // if its negative, want to add the underflow to the end.
+        //
+        // want to end n/2 below y, or lines.count if that's bigger.
+        // if it's bigger, want to add the overflow to the start.
+        let mut start = y - space;
+        let mut end = y + space + n % 2;
+        let count = self.lines.count as i64;
 
-        let end = min(self.lines.count, y + space + diff + n % 2);
+        if start < 0 {
+            end += -1 * start;
+            start = 0;
+        }
 
-        self.render(writer, start, end, y)
+        if end > count {
+            start = max(0, start - (end - count));
+            end = count;
+        }
+
+        self.render(writer, start as usize, end as usize, y as usize)
     }
 
+    /// Render a singe line of the tree.
+    ///
+    /// Uses \r\n as a line ending since when terminal is in raw mode \n
+    /// alone does not move the cursor back to the beginning of the line.
     fn render_line<W: Write>(
         &self,
         writer: &mut W,
@@ -177,10 +195,7 @@ impl Tree {
         }
     }
 
-    /// Render the lines in the range [top, bottom).
-    ///
-    /// Uses \r\n as a line ending since when terminal is in raw mode \n
-    /// alone does not move the cursor back to the beginning of the line.
+    /// Render the lines of the tree in the range [top, bottom).
     pub fn render<W: Write>(
         &self,
         writer: &mut W,

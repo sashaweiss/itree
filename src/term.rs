@@ -19,7 +19,7 @@ pub fn render_to_stdout(tree: &Tree) -> io::Result<()> {
 
     clear();
     let (_, y) = termion::terminal_size()?;
-    tree.render_around_focus(&mut stdout, y as usize)
+    tree.render_around_focus(&mut stdout, y as i64)
 }
 
 pub fn navigate(tree: &mut Tree) {
