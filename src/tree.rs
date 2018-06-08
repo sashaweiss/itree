@@ -138,6 +138,45 @@ impl Tree {
         self.render(writer, start, end, y)
     }
 
+    fn render_line<W: Write>(
+        &self,
+        writer: &mut W,
+        ind: usize,
+        highlight: bool,
+        last: bool,
+    ) -> io::Result<()> {
+        let line = &self.lines.lines[ind];
+        let ending = if last { "" } else { "\r\n" };
+
+        if highlight {
+            write!(
+                writer,
+                "{}{}{}{}{}{}",
+                line.prefix,
+                if line.prefix == "" { "" } else { " " },
+                color::Bg(color::Blue),
+                self.tree[line.node].data.name,
+                color::Bg(color::Reset),
+                ending,
+            )
+        } else {
+            write!(
+                writer,
+                "{}{}{}{}",
+                line.prefix,
+                if line.prefix == "" { "" } else { " " },
+                self.tree[line.node].data.name,
+                if last { "" } else { "\r\n" }
+            )
+        }?;
+
+        if last {
+            writer.flush()
+        } else {
+            Ok(())
+        }
+    }
+
     /// Render the lines in the range [top, bottom).
     ///
     /// Uses \r\n as a line ending since when terminal is in raw mode \n
@@ -150,29 +189,7 @@ impl Tree {
         highlight: usize,
     ) -> io::Result<()> {
         for i in top..bottom {
-            let line = &self.lines.lines[i];
-            let ending = if i == bottom - 1 { "" } else { "\r\n" };
-            if i == highlight {
-                write!(
-                    writer,
-                    "{}{}{}{}{}{}",
-                    line.prefix,
-                    if line.prefix == "" { "" } else { " " },
-                    color::Bg(color::Blue),
-                    self.tree[line.node].data.name,
-                    color::Bg(color::Reset),
-                    ending,
-                )
-            } else {
-                write!(
-                    writer,
-                    "{}{}{}{}",
-                    line.prefix,
-                    if line.prefix == "" { "" } else { " " },
-                    self.tree[line.node].data.name,
-                    ending,
-                )
-            }?;
+            self.render_line(writer, i, i == highlight, i == bottom - 1)?;
         }
 
         Ok(())
