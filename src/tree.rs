@@ -139,6 +139,9 @@ impl Tree {
     }
 
     /// Render the lines in the range [top, bottom).
+    ///
+    /// Uses \r\n as a line ending since when terminal is in raw mode \n
+    /// alone does not move the cursor back to the beginning of the line.
     pub fn render<W: Write>(
         &self,
         writer: &mut W,
@@ -148,25 +151,28 @@ impl Tree {
     ) -> io::Result<()> {
         for i in top..bottom {
             let line = &self.lines.lines[i];
+            let ending = if i == bottom - 1 { "" } else { "\r\n" };
             if i == highlight {
-                writeln!(
+                write!(
                     writer,
-                    "{}{}{}{}{}",
+                    "{}{}{}{}{}{}",
                     line.prefix,
                     if line.prefix == "" { "" } else { " " },
                     color::Bg(color::Blue),
                     self.tree[line.node].data.name,
-                    color::Bg(color::Reset)
+                    color::Bg(color::Reset),
+                    ending,
                 )
             } else {
-                writeln!(
+                write!(
                     writer,
-                    "{}{}{}",
+                    "{}{}{}{}",
                     line.prefix,
                     if line.prefix == "" { "" } else { " " },
-                    self.tree[line.node].data.name
+                    self.tree[line.node].data.name,
+                    ending,
                 )
-            }?
+            }?;
         }
 
         Ok(())
