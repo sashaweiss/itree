@@ -7,3 +7,4 @@ authors = ["sashaweiss <sasha@sashaweiss.coffee>"]
 termion = "1.5"
 indextree = "1.1"
 ignore = "0.4"
+clap = "2.31"

@@ -168,6 +168,7 @@ impl fmt::Display for Tree {
 }
 
 impl Tree {
+    #[allow(dead_code)]
     pub fn new<P: AsRef<Path>>(dir: &P) -> Self {
         Tree::new_with_options(dir, TreeOptions::new())
     }
