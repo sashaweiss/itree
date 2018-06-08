@@ -71,9 +71,13 @@ impl Tree {
         let lines = Tree::draw(&tree, root);
 
         Self {
+            focused: if let Some(c) = tree[root].first_child() {
+                c
+            } else {
+                root
+            },
             tree,
             root,
-            focused: root,
             lines,
         }
     }
@@ -87,7 +91,13 @@ impl Tree {
     pub fn focus_up(&mut self) {
         self.focused = match self.tree[self.focused].parent() {
             None => self.focused,
-            Some(p) => p,
+            Some(p) => {
+                if p == self.root {
+                    self.focused
+                } else {
+                    p
+                }
+            }
         };
     }
 
