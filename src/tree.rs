@@ -15,6 +15,109 @@ pub const END_BRANCH: &str = "└──";
 pub const BLANK_INDENT: &str = "    ";
 pub const BAR_INDENT: &str = "│   ";
 
+/****** TreeOptions ******/
+
+#[derive(Debug)]
+pub struct TreeOptions {
+    pub(crate) max_depth: Option<usize>,
+    pub(crate) follow_links: bool,
+    pub(crate) max_filesize: Option<u64>,
+    pub(crate) hidden: bool,
+    pub(crate) ignore: bool,
+    pub(crate) git_global: bool,
+    pub(crate) git_ignore: bool,
+    pub(crate) git_exclude: bool,
+    pub(crate) custom_ignore: Vec<String>,
+}
+
+impl TreeOptions {
+    pub fn new() -> Self {
+        Self {
+            max_depth: None,
+            follow_links: false,
+            max_filesize: None,
+            hidden: true,
+            ignore: true,
+            git_global: true,
+            git_ignore: true,
+            git_exclude: true,
+            custom_ignore: Vec::new(),
+        }
+    }
+
+    /// Set a maximum depth for the tree to search. `None` indicates no limit.
+    ///
+    /// `None` by default.
+    pub fn max_depth(&mut self, max_depth: Option<usize>) -> &mut Self {
+        self.max_depth = max_depth;
+        self
+    }
+
+    /// Set whether or not to follow links.
+    ///
+    /// Disabled by default.
+    pub fn follow_links(&mut self, follow_links: bool) -> &mut Self {
+        self.follow_links = follow_links;
+        self
+    }
+
+    /// Set a maximum file size to include. `None` indicates no limit.
+    ///
+    /// `None` by default.
+    pub fn max_filesize(&mut self, max_filesize: Option<u64>) -> &mut Self {
+        self.max_filesize = max_filesize;
+        self
+    }
+
+    /// Set whether or not to ignore hidden files.
+    ///
+    /// Enabled by default.
+    pub fn hidden(&mut self, hidden: bool) -> &mut Self {
+        self.hidden = hidden;
+        self
+    }
+
+    /// Set whether or not to read `.ignore` files.
+    ///
+    /// Enabled by default.
+    pub fn ignore(&mut self, ignore: bool) -> &mut Self {
+        self.ignore = ignore;
+        self
+    }
+
+    /// Set whether or not to read a global `.gitignore` file, from git's `core.excludesFile` option.
+    ///
+    /// Enabled by default.
+    pub fn git_global(&mut self, git_global: bool) -> &mut Self {
+        self.git_global = git_global;
+        self
+    }
+
+    /// Set whether or not to read `.gitignore` files.
+    ///
+    /// Enabled by default.
+    pub fn git_ignore(&mut self, git_ignore: bool) -> &mut Self {
+        self.git_ignore = git_ignore;
+        self
+    }
+
+    /// Set whether or not to read `.git/info/exclude` files.
+    ///
+    /// Enabled by default.
+    pub fn git_exclude(&mut self, git_exclude: bool) -> &mut Self {
+        self.git_exclude = git_exclude;
+        self
+    }
+
+    /// Add a custom ignore path.
+    pub fn add_custom_ignore(&mut self, path: &str) -> &mut Self {
+        self.custom_ignore.push(path.to_owned());
+        self
+    }
+}
+
+/****** Tree ******/
+
 #[derive(Debug)]
 struct TreeLine {
     node: NodeId,
@@ -66,7 +169,11 @@ impl fmt::Display for Tree {
 
 impl Tree {
     pub fn new<P: AsRef<Path>>(dir: &P) -> Self {
-        let (tree, root) = fs_to_tree(dir);
+        Tree::new_with_options(dir, TreeOptions::new())
+    }
+
+    pub fn new_with_options<P: AsRef<Path>>(dir: &P, options: TreeOptions) -> Self {
+        let (tree, root) = fs_to_tree(dir, options);
 
         let lines = Tree::draw(&tree, root);
 

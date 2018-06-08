@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["sashaweiss <sasha@sashaweiss.coffee>"]
 
 [dependencies]
-termion = "*"
-indextree = "1.1.1"
-ignore = "0.3"
+termion = "1.5"
+indextree = "1.1"
+ignore = "0.4"
