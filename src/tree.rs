@@ -1,4 +1,4 @@
-use std::cmp::{max, min, Ordering};
+use std::cmp::max;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::Path;
