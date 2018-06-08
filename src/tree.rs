@@ -5,6 +5,7 @@ use std::path::Path;
 use std::{fmt, io};
 
 use indextree::{Arena, NodeId};
+use termion::color;
 
 use fs::{fs_to_tree, FsEntry};
 
@@ -53,7 +54,9 @@ pub struct Tree {
 
 impl fmt::Display for Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for l in &self.lines.lines {
+        writeln!(f, "{}", self.tree[self.root].data.name)?;
+
+        for l in &self.lines.lines[1..] {
             writeln!(f, "{} {}", l.prefix, self.tree[l.node].data.name)?;
         }
 
@@ -132,14 +135,38 @@ impl Tree {
 
         let end = min(self.lines.count, y + space + diff + n % 2);
 
-        self.render(writer, start, end)
+        self.render(writer, start, end, y)
     }
 
     /// Render the lines in the range [top, bottom).
-    pub fn render<W: Write>(&self, writer: &mut W, top: usize, bottom: usize) -> io::Result<()> {
+    pub fn render<W: Write>(
+        &self,
+        writer: &mut W,
+        top: usize,
+        bottom: usize,
+        highlight: usize,
+    ) -> io::Result<()> {
         for i in top..bottom {
             let line = &self.lines.lines[i];
-            writeln!(writer, "{} {}", line.prefix, self.tree[line.node].data.name)?;
+            if i == highlight {
+                writeln!(
+                    writer,
+                    "{}{}{}{}{}",
+                    line.prefix,
+                    if line.prefix == "" { "" } else { " " },
+                    color::Bg(color::Blue),
+                    self.tree[line.node].data.name,
+                    color::Bg(color::Reset)
+                )
+            } else {
+                writeln!(
+                    writer,
+                    "{}{}{}",
+                    line.prefix,
+                    if line.prefix == "" { "" } else { " " },
+                    self.tree[line.node].data.name
+                )
+            }?
         }
 
         Ok(())
@@ -265,9 +292,9 @@ mod tests {
     #[test]
     fn test_focus() {
         let mut t = Tree::new(&test_dir(""));
-        assert_eq!("test", t.focused().name);
+        assert_eq!("resources/test", t.focused().name);
         t.focus_up();
-        assert_eq!("test", t.focused().name);
+        assert_eq!("resources/test", t.focused().name);
 
         t.focus_down();
         assert_eq!("one_dir", t.focused().name);
@@ -280,6 +307,6 @@ mod tests {
         assert_eq!("simple", t.focused().name);
 
         t.focus_up();
-        assert_eq!("test", t.focused().name);
+        assert_eq!("resources/test", t.focused().name);
     }
 }

@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::iter;
 use std::path::Path;
 
@@ -45,7 +46,15 @@ pub fn fs_to_tree<P: AsRef<Path>>(dir: &P) -> (Arena<FsEntry>, NodeId) {
     if let Some(Ok(de)) = walk.next() {
         root = tree.new_node(FsEntry {
             de,
-            name: path_to_string(dir),
+            name: if dir.as_ref() == OsStr::new(".") {
+                ".".to_owned()
+            } else {
+                let mut d = format!("{}", dir.as_ref().display());
+                if d.ends_with("/") {
+                    d.pop();
+                }
+                d
+            },
         });
     } else {
         panic!("Failed to get the root!");

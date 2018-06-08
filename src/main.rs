@@ -8,7 +8,6 @@ mod tree;
 
 fn main() {
     let t = tree::Tree::new(&".");
-    // print!("{}", t);
 
     term::render_to_stdout(&t).unwrap();
 
