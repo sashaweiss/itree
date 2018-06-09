@@ -10,15 +10,35 @@ mod term;
 mod tree;
 
 fn main() {
-    let options = parse_args();
+    let (options, color_string) = parse_args();
 
     match tree::Tree::new_with_options(options) {
-        Ok(mut t) => term::navigate(&mut t),
+        Ok(mut t) => {
+            match color_string.as_str() {
+                "black" => term::navigate(&mut t, &termion::color::Black),
+                "blue" => term::navigate(&mut t, &termion::color::Blue),
+                "cyan" => term::navigate(&mut t, &termion::color::Cyan),
+                "green" => term::navigate(&mut t, &termion::color::Green),
+                "magenta" => term::navigate(&mut t, &termion::color::Magenta),
+                "red" => term::navigate(&mut t, &termion::color::Red),
+                "white" => term::navigate(&mut t, &termion::color::White),
+                "yellow" => term::navigate(&mut t, &termion::color::Yellow),
+                "lightblack" => term::navigate(&mut t, &termion::color::LightBlack),
+                "lightblue" => term::navigate(&mut t, &termion::color::LightBlue),
+                "lightcyan" => term::navigate(&mut t, &termion::color::LightCyan),
+                "lightgreen" => term::navigate(&mut t, &termion::color::LightGreen),
+                "lightmagenta" => term::navigate(&mut t, &termion::color::LightMagenta),
+                "lightred" => term::navigate(&mut t, &termion::color::LightRed),
+                "lightwhite" => term::navigate(&mut t, &termion::color::LightWhite),
+                "lightyellow" => term::navigate(&mut t, &termion::color::LightYellow),
+                _ => panic!("unrecognized color string"),
+            };
+        }
         Err(e) => eprintln!("{:?}", e),
     };
 }
 
-fn parse_args() -> tree::TreeOptions<String> {
+fn parse_args() -> (tree::TreeOptions<String>, String) {
     let matches = App::new("rusty-tree")
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
@@ -68,6 +88,31 @@ fn parse_args() -> tree::TreeOptions<String> {
                 .multiple(true),
         )
         .arg(
+            Arg::with_name("color")
+                .short("c")
+                .long("color")
+                .help("The color to highlight the focused file. Blue by default")
+                .takes_value(true)
+                .possible_values(&[
+                    "black",
+                    "blue",
+                    "cyan",
+                    "green",
+                    "magenta",
+                    "red",
+                    "white",
+                    "yellow",
+                    "lightblack",
+                    "lightblue",
+                    "lightcyan",
+                    "lightgreen",
+                    "lightmagenta",
+                    "lightred",
+                    "lightwhite",
+                    "lightyellow",
+                ]),
+        )
+        .arg(
             Arg::with_name("root")
                 .last(true)
                 .help("The directory at which to start the tree"),
@@ -101,5 +146,11 @@ fn parse_args() -> tree::TreeOptions<String> {
         options.root(root.to_owned());
     }
 
-    options
+    (
+        options,
+        matches
+            .value_of("color")
+            .map(|s| s.to_owned())
+            .unwrap_or("blue".to_owned()),
+    )
 }

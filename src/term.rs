@@ -2,6 +2,7 @@ use std::io;
 
 use termion;
 use termion::clear::All;
+use termion::color;
 use termion::cursor::{Goto, Hide, Show};
 use termion::event::Key;
 use termion::input::TermRead;
@@ -14,22 +15,22 @@ fn clear() {
     print!("{}", Goto(1, 1));
 }
 
-pub fn render_to_stdout(tree: &Tree) -> io::Result<()> {
+pub fn render_to_stdout(tree: &Tree, color: &color::Color) -> io::Result<()> {
     let mut stdout = io::stdout();
 
     clear();
     let (_, y) = termion::terminal_size()?;
-    tree.render_around_focus(&mut stdout, y as i64)
+    tree.render_around_focus(&mut stdout, y as i64, color)
 }
 
-pub fn navigate(tree: &mut Tree) {
+pub fn navigate(tree: &mut Tree, color: &color::Color) {
     // The following is necessary to properly read from stdin.
     // For details, see: https://github.com/ticki/termion/issues/42
     let _stdout = io::stdout().into_raw_mode().unwrap();
 
     println!("{}", Hide);
 
-    render_to_stdout(tree)
+    render_to_stdout(tree, color)
         .map_err(|e| {
             println!("{}", Show);
             format!("Failed to render tree: {:?}", e)
@@ -55,7 +56,7 @@ pub fn navigate(tree: &mut Tree) {
             _ => {}
         }
 
-        render_to_stdout(tree)
+        render_to_stdout(tree, color)
             .map_err(|e| {
                 println!("{}", Show);
                 format!("Failed to render tree: {:?}", e)

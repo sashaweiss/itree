@@ -5,7 +5,7 @@ use std::path::Path;
 use std::{fmt, io};
 
 use indextree::{Arena, NodeId};
-use termion::color;
+use termion::color::{Bg, Color, Reset};
 
 use fs::{fs_to_tree, FsEntry};
 
@@ -236,7 +236,12 @@ impl Tree {
     /// the remaining space will be used on the other side.
     ///
     /// TODO: handle line wrappings
-    pub fn render_around_focus<W: Write>(&self, writer: &mut W, n: i64) -> io::Result<()> {
+    pub fn render_around_focus<W: Write>(
+        &self,
+        writer: &mut W,
+        n: i64,
+        hl_color: &Color,
+    ) -> io::Result<()> {
         let y = self.lines.inds[&self.focused] as i64;
         let space = n / 2;
 
@@ -261,7 +266,23 @@ impl Tree {
             end = count;
         }
 
-        self.render(writer, start as usize, end as usize, y as usize)
+        self.render(writer, start as usize, end as usize, y as usize, hl_color)
+    }
+
+    /// Render the lines of the tree in the range [top, bottom).
+    pub fn render<W: Write>(
+        &self,
+        writer: &mut W,
+        top: usize,
+        bottom: usize,
+        highlight: usize,
+        hl_color: &Color,
+    ) -> io::Result<()> {
+        for i in top..bottom {
+            self.render_line(writer, i, i == highlight, i == bottom - 1, hl_color)?;
+        }
+
+        Ok(())
     }
 
     /// Render a singe line of the tree.
@@ -274,6 +295,7 @@ impl Tree {
         ind: usize,
         highlight: bool,
         last: bool,
+        hl_color: &Color,
     ) -> io::Result<()> {
         let line = &self.lines.lines[ind];
         let ending = if last { "" } else { "\r\n" };
@@ -284,9 +306,9 @@ impl Tree {
                 "{}{}{}{}{}{}",
                 line.prefix,
                 if line.prefix == "" { "" } else { " " },
-                color::Bg(color::Blue),
+                Bg(hl_color),
                 self.tree[line.node].data.name,
-                color::Bg(color::Reset),
+                Bg(Reset),
                 ending,
             )
         } else {
@@ -305,21 +327,6 @@ impl Tree {
         } else {
             Ok(())
         }
-    }
-
-    /// Render the lines of the tree in the range [top, bottom).
-    pub fn render<W: Write>(
-        &self,
-        writer: &mut W,
-        top: usize,
-        bottom: usize,
-        highlight: usize,
-    ) -> io::Result<()> {
-        for i in top..bottom {
-            self.render_line(writer, i, i == highlight, i == bottom - 1)?;
-        }
-
-        Ok(())
     }
 }
 
