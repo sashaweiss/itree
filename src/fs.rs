@@ -4,7 +4,7 @@ use std::path::Path;
 
 use tree::TreeOptions;
 
-use ignore::{DirEntry, Walk, WalkBuilder};
+use ignore::{DirEntry, Walk, WalkBuilder, overrides::OverrideBuilder};
 use indextree::{Arena, NodeId};
 
 #[derive(Debug)]
@@ -14,8 +14,9 @@ pub struct FsEntry {
 }
 
 /// Create an iterator over the FS, rooted at dir.
-fn get_walker<P: AsRef<Path>>(dir: &P, options: TreeOptions) -> iter::Peekable<Walk> {
-    let mut builder = WalkBuilder::new(dir);
+fn get_walker<P: AsRef<Path>>(options: &TreeOptions<P>) -> Result<iter::Peekable<Walk>, String> {
+    let dir = &options.root;
+    let mut builder = WalkBuilder::new(&dir);
 
     builder
         .parents(false)
@@ -23,17 +24,22 @@ fn get_walker<P: AsRef<Path>>(dir: &P, options: TreeOptions) -> iter::Peekable<W
         .max_depth(options.max_depth)
         .follow_links(options.follow_links)
         .max_filesize(options.max_filesize)
-        .hidden(options.hidden)
-        .ignore(options.ignore)
-        .git_global(options.git_global)
-        .git_ignore(options.git_ignore)
-        .git_exclude(options.git_ignore);
+        .hidden(!options.hidden)
+        .ignore(!options.no_ignore)
+        .git_global(!options.no_ignore)
+        .git_ignore(!options.no_ignore)
+        .git_exclude(!options.no_git_exclude);
 
-    for file in options.custom_ignore {
-        builder.add_custom_ignore_filename(file);
+    let mut ovs = OverrideBuilder::new(dir);
+    for file in options.custom_ignore.iter() {
+        ovs.add(&file)
+            .map_err(|e| format!("Error adding custom ignore glob: {:?}", e))?;
     }
 
-    builder.build().peekable()
+    builder.overrides(ovs.build()
+        .map_err(|e| format!("Error adding custom ignore glob: {:?}", e))?);
+
+    Ok(builder.build().peekable())
 }
 
 /// Add a node to `tree`, as a child of `node`, with `data` as the contents.
@@ -51,8 +57,11 @@ fn path_to_string<P: AsRef<Path>>(p: &P) -> String {
 }
 
 /// Collect an Arena representation of the file system.
-pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: TreeOptions) -> (Arena<FsEntry>, NodeId) {
-    let mut walk = get_walker(dir, options);
+pub fn fs_to_tree<P: AsRef<Path>>(
+    options: TreeOptions<P>,
+) -> Result<(Arena<FsEntry>, NodeId), String> {
+    let dir = &options.root;
+    let mut walk = get_walker(&options)?;
 
     let mut tree = Arena::<FsEntry>::new();
     let root: NodeId;
@@ -118,7 +127,7 @@ pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: TreeOptions) -> (Arena<FsEnt
         }
     }
 
-    (tree, root)
+    Ok((tree, root))
 }
 
 #[cfg(test)]
@@ -142,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_collect_fs_abs_path() {
-        let (tree, root) = fs_to_tree(&abs_test_dir("simple"), TreeOptions::new());
+        let (tree, root) = fs_to_tree(TreeOptions::new(&abs_test_dir("simple"))).unwrap();
         assert_eq!("simple", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
@@ -155,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_collect_fs_rel_path() {
-        let (tree, root) = fs_to_tree(&test_dir("simple"), TreeOptions::new());
+        let (tree, root) = fs_to_tree(TreeOptions::new(&test_dir("simple"))).unwrap();
         assert_eq!("simple", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
@@ -168,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_collect_fs_dir() {
-        let (tree, root) = fs_to_tree(&test_dir("one_dir"), TreeOptions::new());
+        let (tree, root) = fs_to_tree(TreeOptions::new(&test_dir("one_dir"))).unwrap();
         assert_eq!("one_dir", tree[root].data.de.file_name());
 
         let children = root.children(&tree)

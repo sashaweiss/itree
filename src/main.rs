@@ -10,8 +10,18 @@ mod term;
 mod tree;
 
 fn main() {
+    let options = parse_args();
+
+    match tree::Tree::new_with_options(options) {
+        Ok(mut t) => term::navigate(&mut t),
+        Err(e) => eprintln!("{:?}", e),
+    };
+}
+
+fn parse_args() -> tree::TreeOptions<String> {
     let matches = App::new("rusty-tree")
         .about("An interactive version of the `tree` utility")
+        .author("Sasha Weiss <sasha@sashaweiss.coffee>")
         .arg(
             Arg::with_name("max_depth")
                 .short("d")
@@ -28,7 +38,6 @@ fn main() {
         )
         .arg(
             Arg::with_name("max_filesize")
-                .short("M")
                 .long("max-filesize")
                 .help("Max file size to include")
                 .takes_value(true)
@@ -36,39 +45,24 @@ fn main() {
         )
         .arg(
             Arg::with_name("hidden")
-                .short("H")
                 .long("hidden")
                 .help("Include hidden files"),
         )
         .arg(
-            Arg::with_name("ignore")
-                .short("i")
-                .long("ignore-files")
-                .help("Do not respect `.ignore` files"),
+            Arg::with_name("no_ignore")
+                .long("no-ignore")
+                .help("Do not respect `.[git]ignore` files"),
         )
         .arg(
-            Arg::with_name("git_global")
-                .short("G")
-                .long("git-global")
-                .help("Do not respect the global `.gitignore` file, if present"),
-        )
-        .arg(
-            Arg::with_name("git_ignore")
-                .short("g")
-                .long("git-ignore")
-                .help("Do not respect `.gitignore` files"),
-        )
-        .arg(
-            Arg::with_name("git_exclude")
-                .short("x")
-                .long("git-exclude")
+            Arg::with_name("no_git_exclude")
+                .long("no-exclude")
                 .help("Do not respect `.git/info/exclude` files"),
         )
         .arg(
             Arg::with_name("custom_ignore")
                 .short("I")
                 .long("ignore")
-                .help("Do not respect `.git/info/exclude` files")
+                .help("Specify an additional path to ignore")
                 .takes_value(true)
                 .number_of_values(1)
                 .multiple(true),
@@ -80,7 +74,7 @@ fn main() {
         )
         .get_matches();
 
-    let mut options = tree::TreeOptions::new();
+    let mut options = tree::TreeOptions::new(".".to_owned());
     options
         .max_depth(
             matches
@@ -93,23 +87,19 @@ fn main() {
                 .value_of("max_filesize")
                 .map(|s| s.parse::<u64>().unwrap()),
         )
-        .hidden(!matches.is_present("hidden"))
-        .ignore(!matches.is_present("ignore"))
-        .git_global(!matches.is_present("git_global"))
-        .git_ignore(!matches.is_present("git_ignore"))
-        .git_exclude(!matches.is_present("git_exclude"));
+        .hidden(matches.is_present("hidden"))
+        .no_ignore(matches.is_present("no_ignore"))
+        .no_git_exclude(matches.is_present("no_git_exclude"));
 
     if let Some(files) = matches.values_of("custom_ignore") {
         for file in files {
-            options.add_custom_ignore(&file);
+            options.add_custom_ignore(&format!("!{}", file));
         }
     }
 
-    let root = match matches.value_of("root") {
-        Some(r) => r,
-        None => ".",
-    };
+    if let Some(root) = matches.value_of("root") {
+        options.root(root.to_owned());
+    }
 
-    let mut t = tree::Tree::new_with_options(&root, options);
-    term::navigate(&mut t);
+    options
 }

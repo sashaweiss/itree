@@ -18,31 +18,35 @@ pub const BAR_INDENT: &str = "│   ";
 /****** TreeOptions ******/
 
 #[derive(Debug)]
-pub struct TreeOptions {
+pub struct TreeOptions<P: AsRef<Path>> {
+    pub(crate) root: P,
     pub(crate) max_depth: Option<usize>,
     pub(crate) follow_links: bool,
     pub(crate) max_filesize: Option<u64>,
     pub(crate) hidden: bool,
-    pub(crate) ignore: bool,
-    pub(crate) git_global: bool,
-    pub(crate) git_ignore: bool,
-    pub(crate) git_exclude: bool,
+    pub(crate) no_ignore: bool,
+    pub(crate) no_git_exclude: bool,
     pub(crate) custom_ignore: Vec<String>,
 }
 
-impl TreeOptions {
-    pub fn new() -> Self {
+impl<P: AsRef<Path>> TreeOptions<P> {
+    pub fn new(root: P) -> Self {
         Self {
+            root,
             max_depth: None,
             follow_links: false,
             max_filesize: None,
             hidden: true,
-            ignore: true,
-            git_global: true,
-            git_ignore: true,
-            git_exclude: true,
+            no_ignore: true,
+            no_git_exclude: true,
             custom_ignore: Vec::new(),
         }
+    }
+
+    /// Set the root directory from which to build the tree.
+    pub fn root(&mut self, root: P) -> &mut Self {
+        self.root = root;
+        self
     }
 
     /// Set a maximum depth for the tree to search. `None` indicates no limit.
@@ -77,35 +81,19 @@ impl TreeOptions {
         self
     }
 
-    /// Set whether or not to read `.ignore` files.
+    /// Set whether or not to read `.[git]ignore` files.
     ///
     /// Enabled by default.
-    pub fn ignore(&mut self, ignore: bool) -> &mut Self {
-        self.ignore = ignore;
-        self
-    }
-
-    /// Set whether or not to read a global `.gitignore` file, from git's `core.excludesFile` option.
-    ///
-    /// Enabled by default.
-    pub fn git_global(&mut self, git_global: bool) -> &mut Self {
-        self.git_global = git_global;
-        self
-    }
-
-    /// Set whether or not to read `.gitignore` files.
-    ///
-    /// Enabled by default.
-    pub fn git_ignore(&mut self, git_ignore: bool) -> &mut Self {
-        self.git_ignore = git_ignore;
+    pub fn no_ignore(&mut self, no_ignore: bool) -> &mut Self {
+        self.no_ignore = no_ignore;
         self
     }
 
     /// Set whether or not to read `.git/info/exclude` files.
     ///
     /// Enabled by default.
-    pub fn git_exclude(&mut self, git_exclude: bool) -> &mut Self {
-        self.git_exclude = git_exclude;
+    pub fn no_git_exclude(&mut self, no_git_exclude: bool) -> &mut Self {
+        self.no_git_exclude = no_git_exclude;
         self
     }
 
@@ -169,16 +157,22 @@ impl fmt::Display for Tree {
 
 impl Tree {
     #[allow(dead_code)]
-    pub fn new<P: AsRef<Path>>(dir: &P) -> Self {
-        Tree::new_with_options(dir, TreeOptions::new())
+    pub fn new() -> Self {
+        Tree::new_with_options(TreeOptions::new(".")).unwrap()
     }
 
-    pub fn new_with_options<P: AsRef<Path>>(dir: &P, options: TreeOptions) -> Self {
-        let (tree, root) = fs_to_tree(dir, options);
+    #[allow(dead_code)]
+    fn new_from_dir<P: AsRef<Path>>(dir: &P) -> Self {
+        let opt = TreeOptions::new(dir);
+        Tree::new_with_options(opt).unwrap()
+    }
+
+    pub fn new_with_options<P: AsRef<Path>>(options: TreeOptions<P>) -> Result<Self, String> {
+        let (tree, root) = fs_to_tree(options)?;
 
         let lines = Tree::draw(&tree, root);
 
-        Self {
+        Ok(Self {
             focused: if let Some(c) = tree[root].first_child() {
                 c
             } else {
@@ -187,7 +181,7 @@ impl Tree {
             tree,
             root,
             lines,
-        }
+        })
     }
 
     #[allow(dead_code)]
@@ -391,7 +385,7 @@ mod tests {
     }
 
     fn draw_to_string(dir: &PathBuf) -> String {
-        format!("{}", Tree::new(dir))
+        format!("{}", Tree::new_from_dir(dir))
     }
 
     #[test]
@@ -447,7 +441,7 @@ mod tests {
 
     #[test]
     fn test_focus() {
-        let mut t = Tree::new(&test_dir(""));
+        let mut t = Tree::new_from_dir(&test_dir(""));
         assert_eq!("resources/test", t.focused().name);
         t.focus_up();
         assert_eq!("resources/test", t.focused().name);
