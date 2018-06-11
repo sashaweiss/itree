@@ -6,6 +6,7 @@ extern crate termion;
 use clap::{App, Arg};
 
 mod fs;
+mod options;
 mod term;
 mod tree;
 
@@ -40,7 +41,7 @@ fn string_to_color(cs: &str) -> Box<termion::color::Color> {
     }
 }
 
-fn parse_args() -> (tree::TreeOptions<String>, Box<termion::color::Color>) {
+fn parse_args() -> (options::TreeOptions<String>, Box<termion::color::Color>) {
     let matches = App::new("rusty-tree")
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
@@ -121,7 +122,7 @@ fn parse_args() -> (tree::TreeOptions<String>, Box<termion::color::Color>) {
         )
         .get_matches();
 
-    let mut options = tree::TreeOptions::new(".".to_owned());
+    let mut options = options::TreeOptions::new(".".to_owned());
     options
         .max_depth(
             matches

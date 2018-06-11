@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::iter;
 use std::path::Path;
 
-use tree::TreeOptions;
+use options::FsOptions;
 
 use ignore::{DirEntry, Walk, WalkBuilder, overrides::OverrideBuilder};
 use indextree::{Arena, NodeId};
@@ -14,8 +14,10 @@ pub struct FsEntry {
 }
 
 /// Create an iterator over the FS, rooted at dir.
-fn get_walker<P: AsRef<Path>>(options: &TreeOptions<P>) -> Result<iter::Peekable<Walk>, String> {
-    let dir = &options.root;
+fn get_walker<P: AsRef<Path>>(
+    dir: &P,
+    options: &FsOptions,
+) -> Result<iter::Peekable<Walk>, String> {
     let mut builder = WalkBuilder::new(&dir);
 
     builder
@@ -58,10 +60,10 @@ fn path_to_string<P: AsRef<Path>>(p: &P) -> String {
 
 /// Collect an Arena representation of the file system.
 pub fn fs_to_tree<P: AsRef<Path>>(
-    options: TreeOptions<P>,
+    dir: &P,
+    options: &FsOptions,
 ) -> Result<(Arena<FsEntry>, NodeId), String> {
-    let dir = &options.root;
-    let mut walk = get_walker(&options)?;
+    let mut walk = get_walker(dir, &options)?;
 
     let mut tree = Arena::<FsEntry>::new();
     let root: NodeId;
@@ -149,9 +151,13 @@ mod tests {
         OsStr::new(s)
     }
 
+    fn test_tree(dir: &PathBuf) -> (Arena<FsEntry>, NodeId) {
+        fs_to_tree(dir, &FsOptions::new()).unwrap()
+    }
+
     #[test]
     fn test_collect_fs_abs_path() {
-        let (tree, root) = fs_to_tree(TreeOptions::new(&abs_test_dir("simple"))).unwrap();
+        let (tree, root) = test_tree(&abs_test_dir("simple"));
         assert_eq!("simple", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
@@ -164,7 +170,7 @@ mod tests {
 
     #[test]
     fn test_collect_fs_rel_path() {
-        let (tree, root) = fs_to_tree(TreeOptions::new(&test_dir("simple"))).unwrap();
+        let (tree, root) = test_tree(&test_dir("simple"));
         assert_eq!("simple", tree[root].data.de.file_name());
 
         let children = root.children(&tree)
@@ -177,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_collect_fs_dir() {
-        let (tree, root) = fs_to_tree(TreeOptions::new(&test_dir("one_dir"))).unwrap();
+        let (tree, root) = test_tree(&test_dir("one_dir"));
         assert_eq!("one_dir", tree[root].data.de.file_name());
 
         let children = root.children(&tree)

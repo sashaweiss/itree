@@ -5,104 +5,16 @@ use std::path::Path;
 use std::{fmt, io};
 
 use indextree::{Arena, NodeId};
-use termion::color::{Bg, Color, Reset};
+use termion::color::{self, Bg, Color, Reset};
 
 use fs::{fs_to_tree, FsEntry};
+use options::*;
 
 pub const MID_BRANCH: &str = "├──";
 pub const END_BRANCH: &str = "└──";
 
 pub const BLANK_INDENT: &str = "    ";
 pub const BAR_INDENT: &str = "│   ";
-
-/****** TreeOptions ******/
-
-#[derive(Debug)]
-pub struct TreeOptions<P: AsRef<Path>> {
-    pub(crate) root: P,
-    pub(crate) max_depth: Option<usize>,
-    pub(crate) follow_links: bool,
-    pub(crate) max_filesize: Option<u64>,
-    pub(crate) hidden: bool,
-    pub(crate) use_ignore: bool,
-    pub(crate) use_git_exclude: bool,
-    pub(crate) custom_ignore: Vec<String>,
-}
-
-impl<P: AsRef<Path>> TreeOptions<P> {
-    pub fn new(root: P) -> Self {
-        Self {
-            root,
-            max_depth: None,
-            follow_links: false,
-            max_filesize: None,
-            hidden: true,
-            use_ignore: true,
-            use_git_exclude: true,
-            custom_ignore: Vec::new(),
-        }
-    }
-
-    /// Set the root directory from which to build the tree.
-    pub fn root(&mut self, root: P) -> &mut Self {
-        self.root = root;
-        self
-    }
-
-    /// Set a maximum depth for the tree to search. `None` indicates no limit.
-    ///
-    /// `None` by default.
-    pub fn max_depth(&mut self, max_depth: Option<usize>) -> &mut Self {
-        self.max_depth = max_depth;
-        self
-    }
-
-    /// Set whether or not to follow links.
-    ///
-    /// Disabled by default.
-    pub fn follow_links(&mut self, follow_links: bool) -> &mut Self {
-        self.follow_links = follow_links;
-        self
-    }
-
-    /// Set a maximum file size to include. `None` indicates no limit.
-    ///
-    /// `None` by default.
-    pub fn max_filesize(&mut self, max_filesize: Option<u64>) -> &mut Self {
-        self.max_filesize = max_filesize;
-        self
-    }
-
-    /// Set whether or not to ignore hidden files.
-    ///
-    /// Enabled by default.
-    pub fn hidden(&mut self, hidden: bool) -> &mut Self {
-        self.hidden = hidden;
-        self
-    }
-
-    /// Set whether or not to read `.[git]ignore` files.
-    ///
-    /// Enabled by default.
-    pub fn use_ignore(&mut self, use_ignore: bool) -> &mut Self {
-        self.use_ignore = use_ignore;
-        self
-    }
-
-    /// Set whether or not to read `.git/info/exclude` files.
-    ///
-    /// Enabled by default.
-    pub fn use_git_exclude(&mut self, use_git_exclude: bool) -> &mut Self {
-        self.use_git_exclude = use_git_exclude;
-        self
-    }
-
-    /// Add a custom ignore path.
-    pub fn add_custom_ignore(&mut self, path: &str) -> &mut Self {
-        self.custom_ignore.push(path.to_owned());
-        self
-    }
-}
 
 /****** Tree ******/
 
@@ -141,6 +53,7 @@ pub struct Tree {
     root: NodeId,
     focused: NodeId,
     lines: TreeLines,
+    render_opts: RenderOptions,
 }
 
 impl fmt::Display for Tree {
@@ -168,7 +81,7 @@ impl Tree {
     }
 
     pub fn new_with_options<P: AsRef<Path>>(options: TreeOptions<P>) -> Result<Self, String> {
-        let (tree, root) = fs_to_tree(options)?;
+        let (tree, root) = fs_to_tree(&options.root, &options.fs_opts)?;
 
         let lines = Tree::draw(&tree, root);
 
@@ -181,6 +94,7 @@ impl Tree {
             tree,
             root,
             lines,
+            render_opts: options.render_opts,
         })
     }
 
