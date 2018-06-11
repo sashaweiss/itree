@@ -10,35 +10,37 @@ mod term;
 mod tree;
 
 fn main() {
-    let (options, color_string) = parse_args();
+    let (options, color) = parse_args();
 
     match tree::Tree::new_with_options(options) {
-        Ok(mut t) => {
-            match color_string.as_str() {
-                "black" => term::navigate(&mut t, &termion::color::Black),
-                "blue" => term::navigate(&mut t, &termion::color::Blue),
-                "cyan" => term::navigate(&mut t, &termion::color::Cyan),
-                "green" => term::navigate(&mut t, &termion::color::Green),
-                "magenta" => term::navigate(&mut t, &termion::color::Magenta),
-                "red" => term::navigate(&mut t, &termion::color::Red),
-                "white" => term::navigate(&mut t, &termion::color::White),
-                "yellow" => term::navigate(&mut t, &termion::color::Yellow),
-                "lightblack" => term::navigate(&mut t, &termion::color::LightBlack),
-                "lightblue" => term::navigate(&mut t, &termion::color::LightBlue),
-                "lightcyan" => term::navigate(&mut t, &termion::color::LightCyan),
-                "lightgreen" => term::navigate(&mut t, &termion::color::LightGreen),
-                "lightmagenta" => term::navigate(&mut t, &termion::color::LightMagenta),
-                "lightred" => term::navigate(&mut t, &termion::color::LightRed),
-                "lightwhite" => term::navigate(&mut t, &termion::color::LightWhite),
-                "lightyellow" => term::navigate(&mut t, &termion::color::LightYellow),
-                _ => panic!("unrecognized color string"),
-            };
-        }
+        Ok(mut t) => term::navigate(&mut t, &(*color)),
         Err(e) => eprintln!("{:?}", e),
     };
 }
 
-fn parse_args() -> (tree::TreeOptions<String>, String) {
+fn string_to_color(cs: &str) -> Box<termion::color::Color> {
+    match cs {
+        "black" => Box::new(termion::color::Black),
+        "blue" => Box::new(termion::color::Blue),
+        "cyan" => Box::new(termion::color::Cyan),
+        "green" => Box::new(termion::color::Green),
+        "magenta" => Box::new(termion::color::Magenta),
+        "red" => Box::new(termion::color::Red),
+        "white" => Box::new(termion::color::White),
+        "yellow" => Box::new(termion::color::Yellow),
+        "lightblack" => Box::new(termion::color::LightBlack),
+        "lightblue" => Box::new(termion::color::LightBlue),
+        "lightcyan" => Box::new(termion::color::LightCyan),
+        "lightgreen" => Box::new(termion::color::LightGreen),
+        "lightmagenta" => Box::new(termion::color::LightMagenta),
+        "lightred" => Box::new(termion::color::LightRed),
+        "lightwhite" => Box::new(termion::color::LightWhite),
+        "lightyellow" => Box::new(termion::color::LightYellow),
+        _ => panic!("unrecognized color string"),
+    }
+}
+
+fn parse_args() -> (tree::TreeOptions<String>, Box<termion::color::Color>) {
     let matches = App::new("rusty-tree")
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
@@ -74,7 +76,7 @@ fn parse_args() -> (tree::TreeOptions<String>, String) {
                 .help("Do not respect `.[git]ignore` files"),
         )
         .arg(
-            Arg::with_name("no_git_exclude")
+            Arg::with_name("use_git_exclude")
                 .long("no-exclude")
                 .help("Do not respect `.git/info/exclude` files"),
         )
@@ -134,7 +136,7 @@ fn parse_args() -> (tree::TreeOptions<String>, String) {
         )
         .hidden(matches.is_present("hidden"))
         .use_ignore(matches.is_present("use_ignore"))
-        .no_git_exclude(matches.is_present("no_git_exclude"));
+        .use_git_exclude(matches.is_present("use_git_exclude"));
 
     if let Some(files) = matches.values_of("custom_ignore") {
         for file in files {
@@ -150,7 +152,7 @@ fn parse_args() -> (tree::TreeOptions<String>, String) {
         options,
         matches
             .value_of("color")
-            .map(|s| s.to_owned())
-            .unwrap_or("blue".to_owned()),
+            .map(|s| string_to_color(s))
+            .unwrap_or(Box::new(termion::color::Blue)),
     )
 }

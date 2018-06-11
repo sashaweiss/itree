@@ -25,7 +25,7 @@ pub struct TreeOptions<P: AsRef<Path>> {
     pub(crate) max_filesize: Option<u64>,
     pub(crate) hidden: bool,
     pub(crate) use_ignore: bool,
-    pub(crate) no_git_exclude: bool,
+    pub(crate) use_git_exclude: bool,
     pub(crate) custom_ignore: Vec<String>,
 }
 
@@ -38,7 +38,7 @@ impl<P: AsRef<Path>> TreeOptions<P> {
             max_filesize: None,
             hidden: true,
             use_ignore: true,
-            no_git_exclude: true,
+            use_git_exclude: true,
             custom_ignore: Vec::new(),
         }
     }
@@ -92,8 +92,8 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     /// Set whether or not to read `.git/info/exclude` files.
     ///
     /// Enabled by default.
-    pub fn no_git_exclude(&mut self, no_git_exclude: bool) -> &mut Self {
-        self.no_git_exclude = no_git_exclude;
+    pub fn use_git_exclude(&mut self, use_git_exclude: bool) -> &mut Self {
+        self.use_git_exclude = use_git_exclude;
         self
     }
 

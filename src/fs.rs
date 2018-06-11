@@ -28,7 +28,7 @@ fn get_walker<P: AsRef<Path>>(options: &TreeOptions<P>) -> Result<iter::Peekable
         .ignore(!options.use_ignore)
         .git_global(!options.use_ignore)
         .git_ignore(!options.use_ignore)
-        .git_exclude(!options.no_git_exclude);
+        .git_exclude(!options.use_git_exclude);
 
     let mut ovs = OverrideBuilder::new(dir);
     for file in options.custom_ignore.iter() {
