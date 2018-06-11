@@ -24,7 +24,7 @@ pub struct TreeOptions<P: AsRef<Path>> {
     pub(crate) follow_links: bool,
     pub(crate) max_filesize: Option<u64>,
     pub(crate) hidden: bool,
-    pub(crate) no_ignore: bool,
+    pub(crate) use_ignore: bool,
     pub(crate) no_git_exclude: bool,
     pub(crate) custom_ignore: Vec<String>,
 }
@@ -37,7 +37,7 @@ impl<P: AsRef<Path>> TreeOptions<P> {
             follow_links: false,
             max_filesize: None,
             hidden: true,
-            no_ignore: true,
+            use_ignore: true,
             no_git_exclude: true,
             custom_ignore: Vec::new(),
         }
@@ -84,8 +84,8 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     /// Set whether or not to read `.[git]ignore` files.
     ///
     /// Enabled by default.
-    pub fn no_ignore(&mut self, no_ignore: bool) -> &mut Self {
-        self.no_ignore = no_ignore;
+    pub fn use_ignore(&mut self, use_ignore: bool) -> &mut Self {
+        self.use_ignore = use_ignore;
         self
     }
 

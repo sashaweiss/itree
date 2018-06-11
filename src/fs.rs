@@ -25,9 +25,9 @@ fn get_walker<P: AsRef<Path>>(options: &TreeOptions<P>) -> Result<iter::Peekable
         .follow_links(options.follow_links)
         .max_filesize(options.max_filesize)
         .hidden(!options.hidden)
-        .ignore(!options.no_ignore)
-        .git_global(!options.no_ignore)
-        .git_ignore(!options.no_ignore)
+        .ignore(!options.use_ignore)
+        .git_global(!options.use_ignore)
+        .git_ignore(!options.use_ignore)
         .git_exclude(!options.no_git_exclude);
 
     let mut ovs = OverrideBuilder::new(dir);

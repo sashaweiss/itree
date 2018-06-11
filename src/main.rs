@@ -69,7 +69,7 @@ fn parse_args() -> (tree::TreeOptions<String>, String) {
                 .help("Include hidden files"),
         )
         .arg(
-            Arg::with_name("no_ignore")
+            Arg::with_name("use_ignore")
                 .long("no-ignore")
                 .help("Do not respect `.[git]ignore` files"),
         )
@@ -133,7 +133,7 @@ fn parse_args() -> (tree::TreeOptions<String>, String) {
                 .map(|s| s.parse::<u64>().unwrap()),
         )
         .hidden(matches.is_present("hidden"))
-        .no_ignore(matches.is_present("no_ignore"))
+        .use_ignore(matches.is_present("use_ignore"))
         .no_git_exclude(matches.is_present("no_git_exclude"));
 
     if let Some(files) = matches.values_of("custom_ignore") {
