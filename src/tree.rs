@@ -1,6 +1,7 @@
 use std::cmp::max;
 use std::collections::HashMap;
 use std::io::Write;
+use std::ops::Deref;
 use std::path::Path;
 use std::{fmt, io};
 
@@ -53,7 +54,7 @@ pub struct Tree {
     root: NodeId,
     focused: NodeId,
     lines: TreeLines,
-    render_opts: RenderOptions,
+    pub(crate) render_opts: RenderOptions,
 }
 
 impl fmt::Display for Tree {
@@ -103,7 +104,6 @@ impl Tree {
         &self.tree[self.focused].data
     }
 
-    #[allow(dead_code)]
     pub fn focus_up(&mut self) {
         self.focused = match self.tree[self.focused].parent() {
             None => self.focused,
@@ -117,7 +117,6 @@ impl Tree {
         };
     }
 
-    #[allow(dead_code)]
     pub fn focus_down(&mut self) {
         self.focused = match self.tree[self.focused].first_child() {
             None => self.focused,
@@ -125,7 +124,6 @@ impl Tree {
         };
     }
 
-    #[allow(dead_code)]
     pub fn focus_left(&mut self) {
         self.focused = match self.tree[self.focused].previous_sibling() {
             None => self.focused,
@@ -133,7 +131,6 @@ impl Tree {
         };
     }
 
-    #[allow(dead_code)]
     pub fn focus_right(&mut self) {
         self.focused = match self.tree[self.focused].next_sibling() {
             None => self.focused,
@@ -150,12 +147,7 @@ impl Tree {
     /// the remaining space will be used on the other side.
     ///
     /// TODO: handle line wrappings
-    pub fn render_around_focus<W: Write>(
-        &self,
-        writer: &mut W,
-        n: i64,
-        hl_color: &Color,
-    ) -> io::Result<()> {
+    pub fn render_around_focus<W: Write>(&self, writer: &mut W, n: i64) -> io::Result<()> {
         let y = self.lines.inds[&self.focused] as i64;
         let space = n / 2;
 
@@ -180,7 +172,7 @@ impl Tree {
             end = count;
         }
 
-        self.render(writer, start as usize, end as usize, y as usize, hl_color)
+        self.render(writer, start as usize, end as usize, y as usize)
     }
 
     /// Render the lines of the tree in the range [top, bottom).
@@ -190,10 +182,9 @@ impl Tree {
         top: usize,
         bottom: usize,
         highlight: usize,
-        hl_color: &Color,
     ) -> io::Result<()> {
         for i in top..bottom {
-            self.render_line(writer, i, i == highlight, i == bottom - 1, hl_color)?;
+            self.render_line(writer, i, i == highlight, i == bottom - 1)?;
         }
 
         Ok(())
@@ -209,7 +200,6 @@ impl Tree {
         ind: usize,
         highlight: bool,
         last: bool,
-        hl_color: &Color,
     ) -> io::Result<()> {
         let line = &self.lines.lines[ind];
         let ending = if last { "" } else { "\r\n" };
@@ -220,7 +210,7 @@ impl Tree {
                 "{}{}{}{}{}{}",
                 line.prefix,
                 if line.prefix == "" { "" } else { " " },
-                Bg(hl_color),
+                Bg(self.render_opts.bg_color.deref()),
                 self.tree[line.node].data.name,
                 Bg(Reset),
                 ending,

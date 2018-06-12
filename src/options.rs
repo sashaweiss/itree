@@ -4,8 +4,8 @@ use std::path::Path;
 use termion::color::{self, Color};
 
 pub struct RenderOptions {
-    fg_color: Box<Color>,
-    bg_color: Box<Color>,
+    pub fg_color: Box<Color>,
+    pub bg_color: Box<Color>,
 }
 
 impl fmt::Debug for RenderOptions {
@@ -121,6 +121,16 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     /// Add a custom ignore path.
     pub fn add_custom_ignore(&mut self, path: &str) -> &mut Self {
         self.fs_opts.custom_ignore.push(path.to_owned());
+        self
+    }
+
+    pub fn fg_color(&mut self, color: Box<Color>) -> &mut Self {
+        self.render_opts.fg_color = color;
+        self
+    }
+
+    pub fn bg_color(&mut self, color: Box<Color>) -> &mut Self {
+        self.render_opts.bg_color = color;
         self
     }
 }

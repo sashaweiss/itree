@@ -11,10 +11,10 @@ mod term;
 mod tree;
 
 fn main() {
-    let (options, color) = parse_args();
+    let options = parse_args();
 
     match tree::Tree::new_with_options(options) {
-        Ok(mut t) => term::navigate(&mut t, &(*color)),
+        Ok(mut t) => term::navigate(&mut t),
         Err(e) => eprintln!("{:?}", e),
     };
 }
@@ -41,7 +41,7 @@ fn string_to_color(cs: &str) -> Box<termion::color::Color> {
     }
 }
 
-fn parse_args() -> (options::TreeOptions<String>, Box<termion::color::Color>) {
+fn parse_args() -> options::TreeOptions<String> {
     let matches = App::new("rusty-tree")
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
@@ -91,10 +91,35 @@ fn parse_args() -> (options::TreeOptions<String>, Box<termion::color::Color>) {
                 .multiple(true),
         )
         .arg(
-            Arg::with_name("color")
+            Arg::with_name("bg_color")
                 .short("c")
-                .long("color")
-                .help("The color to highlight the focused file. Blue by default")
+                .long("bg-color")
+                .help("The background color to highlight the focused file. Blue by default")
+                .takes_value(true)
+                .possible_values(&[
+                    "black",
+                    "blue",
+                    "cyan",
+                    "green",
+                    "magenta",
+                    "red",
+                    "white",
+                    "yellow",
+                    "lightblack",
+                    "lightblue",
+                    "lightcyan",
+                    "lightgreen",
+                    "lightmagenta",
+                    "lightred",
+                    "lightwhite",
+                    "lightyellow",
+                ]),
+        )
+        .arg(
+            Arg::with_name("fg_color")
+                .short("f")
+                .long("fg-color")
+                .help("The foreground color to use to draw the tree. White by default")
                 .takes_value(true)
                 .possible_values(&[
                     "black",
@@ -137,7 +162,13 @@ fn parse_args() -> (options::TreeOptions<String>, Box<termion::color::Color>) {
         )
         .hidden(matches.is_present("hidden"))
         .use_ignore(matches.is_present("use_ignore"))
-        .use_git_exclude(matches.is_present("use_git_exclude"));
+        .use_git_exclude(matches.is_present("use_git_exclude"))
+        .fg_color(string_to_color(
+            matches.value_of("fg_color").unwrap_or("white"),
+        ))
+        .bg_color(string_to_color(
+            matches.value_of("bg_color").unwrap_or("blue"),
+        ));
 
     if let Some(files) = matches.values_of("custom_ignore") {
         for file in files {
@@ -149,11 +180,5 @@ fn parse_args() -> (options::TreeOptions<String>, Box<termion::color::Color>) {
         options.root(root.to_owned());
     }
 
-    (
-        options,
-        matches
-            .value_of("color")
-            .map(|s| string_to_color(s))
-            .unwrap_or(Box::new(termion::color::Blue)),
-    )
+    options
 }
