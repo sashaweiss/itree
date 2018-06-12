@@ -26,7 +26,7 @@ $ cargo install
 Package managers and precompiled binaries to come!
 
 ## Usage
-Running `itree` will start an interactive CLI.
+Running `itree` will start an interactive CLI. Use `itree -h` to see a full list of configurations and UI options!
 
 * Use the arrow keys to move around, as makes sense visually: `Up` and `Down` move between files in the same directory level, while `Left` and `Right` move one level higher and lower in the directory tree, respectively.
 * Use `q`, `Ctrl-C`, or `Esc` to exit.
