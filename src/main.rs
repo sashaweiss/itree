@@ -39,16 +39,16 @@ fn parse_args() -> options::TreeOptions<String> {
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
         .arg(
-            Arg::with_name("max_depth")
-                .short("d")
-                .long("max-depth")
-                .help("Max recursion depth")
+            Arg::with_name("max_level")
+                .short("L")
+                .long("max-level")
+                .help("Max recursion level")
                 .takes_value(true)
                 .validator(|s| s.parse::<usize>().map(|_| {}).map_err(|e| format!("{}", e))),
         )
         .arg(
             Arg::with_name("follow_links")
-                .short("L")
+                .short("l")
                 .long("follow-links")
                 .help("Follow links"),
         )
@@ -145,7 +145,7 @@ fn parse_args() -> options::TreeOptions<String> {
     options
         .max_depth(
             matches
-                .value_of("max_depth")
+                .value_of("max_level")
                 .map(|s| s.parse::<usize>().unwrap()),
         )
         .follow_links(matches.is_present("follow_links"))
