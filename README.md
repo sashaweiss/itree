@@ -36,7 +36,6 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 ### My to-do list
 
 #### Short-term
-* Render symlinks as "\<name\> -> \<dest\>"
 * Optionally render information about each node, like file size (`tree -h`)
 * Add a loading bar for when the tree is being constructed
 
