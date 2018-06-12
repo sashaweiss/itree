@@ -85,7 +85,10 @@ fn root_to_fsentry<P: AsRef<Path>>(dir: &P, de: DirEntry) -> FsEntry {
 }
 
 /// Collect an Arena representation of the file system.
-pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> (Arena<FsEntry>, NodeId) {
+pub fn fs_to_tree<P: AsRef<Path>>(
+    dir: &P,
+    options: &FsOptions,
+) -> (Arena<FsEntry>, NodeId, usize, usize) {
     let mut walk = get_walker(dir, &options);
 
     let mut tree = Arena::<FsEntry>::new();
@@ -104,8 +107,18 @@ pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> (Arena<FsEntr
         Last(usize),
     }
 
+    let mut n_files = 0;
+    let mut n_dirs = 0;
     let mut curr = root;
     while let Some(Ok(de)) = walk.next() {
+        if let Some(ft) = de.file_type() {
+            if ft.is_dir() {
+                n_dirs += 1;
+            } else {
+                n_files += 1;
+            }
+        }
+
         let te = de_to_fsentry(de);
 
         match match walk.peek() {
@@ -138,7 +151,7 @@ pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> (Arena<FsEntr
         }
     }
 
-    (tree, root)
+    (tree, root, n_files, n_dirs)
 }
 
 #[cfg(test)]
@@ -156,7 +169,8 @@ mod tests {
     }
 
     fn test_tree(dir: &PathBuf) -> (Arena<FsEntry>, NodeId) {
-        fs_to_tree(dir, &FsOptions::new())
+        let (tree, root, _, _) = fs_to_tree(dir, &FsOptions::new());
+        (tree, root)
     }
 
     #[test]

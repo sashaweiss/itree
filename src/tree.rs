@@ -54,6 +54,8 @@ pub struct Tree {
     root: NodeId,
     focused: NodeId,
     lines: TreeLines,
+    n_files: usize,
+    n_dirs: usize,
     pub(crate) render_opts: RenderOptions,
 }
 
@@ -64,6 +66,8 @@ impl fmt::Display for Tree {
         for l in &self.lines.lines[1..] {
             writeln!(f, "{} {}", l.prefix, self.tree[l.node].data.name)?;
         }
+
+        writeln!(f, "\n{}", self.summary())?;
 
         Ok(())
     }
@@ -82,7 +86,7 @@ impl Tree {
     }
 
     pub fn new_with_options<P: AsRef<Path>>(options: TreeOptions<P>) -> Self {
-        let (tree, root) = fs_to_tree(&options.root, &options.fs_opts);
+        let (tree, root, n_files, n_dirs) = fs_to_tree(&options.root, &options.fs_opts);
 
         let lines = Tree::draw(&tree, root);
 
@@ -95,6 +99,8 @@ impl Tree {
             tree,
             root,
             lines,
+            n_files,
+            n_dirs,
             render_opts: options.render_opts,
         }
     }
@@ -236,6 +242,10 @@ enum Indent {
 }
 
 impl Tree {
+    pub fn summary(&self) -> String {
+        format!("{} directories, {} files", self.n_dirs, self.n_files)
+    }
+
     fn draw(tree: &Arena<FsEntry>, root: NodeId) -> TreeLines {
         let mut tree_lines = TreeLines::new();
 
