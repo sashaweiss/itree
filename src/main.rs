@@ -137,7 +137,7 @@ fn parse_args() -> options::TreeOptions<String> {
         )
         .arg(
             Arg::with_name("root")
-                .last(true)
+                .index(1)
                 .help("The directory at which to start the tree"),
         )
         .get_matches();
