@@ -2,6 +2,12 @@
 name = "itree"
 version = "0.1.0"
 authors = ["sashaweiss <sasha@sashaweiss.coffee>"]
+description = "An interactively navigable version of the Linux utility `tree`"
+homepage = "https://github.com/sashaweiss/itree"
+repository = "https://github.com/sashaweiss/itree"
+readme = "README.md"
+keywords = ["tree", "interactive", "navigate", "directory"]
+license = "MIT"
 
 [dependencies]
 termion = "1.5"
