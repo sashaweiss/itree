@@ -45,6 +45,7 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 * Write more comprehensive documentation of source code
 
 ### Medium priority
+* Implement dynamic directory folding
 * Implement optional information displays that `tree` offers, e.g. `tree -h`
 * Add commands for interacting with files under the cursor
 * Figure out why `parse_args` panics when given stdin input
