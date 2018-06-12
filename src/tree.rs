@@ -151,13 +151,6 @@ impl Tree {
         let y = self.lines.inds[&self.focused] as i64;
         let space = n / 2;
 
-        // The range is gonna be size <= n
-        //
-        // Want to start n/2 above y, or 0 if that's negative.
-        // if its negative, want to add the underflow to the end.
-        //
-        // want to end n/2 below y, or lines.count if that's bigger.
-        // if it's bigger, want to add the overflow to the start.
         let mut start = y - space;
         let mut end = y + space + n % 2;
         let count = self.lines.count as i64;
