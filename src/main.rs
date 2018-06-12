@@ -8,36 +8,46 @@ use itree::{color, options, term, tree};
 use std::io::{self, Write};
 use std::sync::mpsc::channel;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 fn main() {
-    let options = parse_args();
+    let (options, bench) = parse_args();
 
-    let (sx, rx) = channel();
+    if bench {
+        let now = Instant::now();
+        tree::Tree::new_with_options(options);
+        let elapsed = now.elapsed();
+        println!(
+            "Time elapsed: {} seconds",
+            elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 * 10e-9
+        )
+    } else {
+        let (sx, rx) = channel();
 
-    thread::spawn(move || {
-        // Only start loading dialog if it takes more than 300ms to build the tree
-        if let Err(_) = rx.recv_timeout(Duration::from_millis(300)) {
-            let mut stdout = io::stdout();
+        thread::spawn(move || {
+            // Only start loading dialog if it takes more than 300ms to build the tree
+            if let Err(_) = rx.recv_timeout(Duration::from_millis(300)) {
+                let mut stdout = io::stdout();
 
-            write!(stdout, "Building tree").unwrap();
-            stdout.flush().unwrap();
-            loop {
-                // Print a dot every 1000ms
-                if let Ok(_) = rx.recv_timeout(Duration::from_millis(1000)) {
-                    break;
-                }
-                write!(stdout, ".").unwrap();
+                write!(stdout, "Building tree").unwrap();
                 stdout.flush().unwrap();
+                loop {
+                    // Print a dot every 1000ms
+                    if let Ok(_) = rx.recv_timeout(Duration::from_millis(1000)) {
+                        break;
+                    }
+                    write!(stdout, ".").unwrap();
+                    stdout.flush().unwrap();
+                }
+                writeln!(stdout, "done!").unwrap();
             }
-            writeln!(stdout, "done!").unwrap();
-        }
-    });
+        });
 
-    let mut t = tree::Tree::new_with_options(options);
-    sx.send(()).unwrap();
+        let mut t = tree::Tree::new_with_options(options);
+        sx.send(()).unwrap();
 
-    term::navigate(&mut t);
+        term::navigate(&mut t);
+    }
 }
 
 fn string_to_color(cs: &str) -> Box<color::Color> {
@@ -62,10 +72,15 @@ fn string_to_color(cs: &str) -> Box<color::Color> {
     }
 }
 
-fn parse_args() -> options::TreeOptions<String> {
+fn parse_args() -> (options::TreeOptions<String>, bool) {
     let matches = App::new("itree")
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
+        .arg(
+            Arg::with_name("bench")
+                .long("bench-only")
+                .help("Do not display the tree. Solely build it and print the time elapsed"),
+        )
         .arg(
             Arg::with_name("max_level")
                 .short("L")
@@ -202,5 +217,5 @@ fn parse_args() -> options::TreeOptions<String> {
         options.root(root.to_owned());
     }
 
-    options
+    (options, matches.is_present("bench"))
 }
