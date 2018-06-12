@@ -5,10 +5,38 @@ use clap::{App, Arg};
 
 use itree::{color, options, term, tree};
 
+use std::io::{self, Write};
+use std::sync::mpsc::channel;
+use std::thread;
+use std::time::Duration;
+
 fn main() {
     let options = parse_args();
 
+    let (sx, rx) = channel();
+
+    thread::spawn(move || {
+        // Only start loading dialog if it takes more than 300ms to build the tree
+        if let Err(_) = rx.recv_timeout(Duration::from_millis(300)) {
+            let mut stdout = io::stdout();
+
+            write!(stdout, "Building tree").unwrap();
+            stdout.flush().unwrap();
+            loop {
+                // Print a dot every 1000ms
+                if let Ok(_) = rx.recv_timeout(Duration::from_millis(1000)) {
+                    break;
+                }
+                write!(stdout, ".").unwrap();
+                stdout.flush().unwrap();
+            }
+            writeln!(stdout, "done!").unwrap();
+        }
+    });
+
     let mut t = tree::Tree::new_with_options(options);
+    sx.send(()).unwrap();
+
     term::navigate(&mut t);
 }
 
