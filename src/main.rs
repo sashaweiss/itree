@@ -1,9 +1,9 @@
 extern crate clap;
-extern crate rusty_tree;
+extern crate itree;
 
 use clap::{App, Arg};
 
-use rusty_tree::{color, options, term, tree};
+use itree::{color, options, term, tree};
 
 fn main() {
     let options = parse_args();
@@ -35,7 +35,7 @@ fn string_to_color(cs: &str) -> Box<color::Color> {
 }
 
 fn parse_args() -> options::TreeOptions<String> {
-    let matches = App::new("rusty-tree")
+    let matches = App::new("itree")
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
         .arg(

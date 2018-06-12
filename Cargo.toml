@@ -1,5 +1,5 @@
 [package]
-name = "rusty-tree"
+name = "itree"
 version = "0.1.0"
 authors = ["sashaweiss <sasha@sashaweiss.coffee>"]
 
