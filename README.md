@@ -33,16 +33,19 @@ Running `itree` will start an interactive CLI.
 
 More commands to come! (E.g. deleting, moving, renaming files.)
 
-### My to-do list
+## My to-do list
 
-#### Short-term
-* Optionally render information about each node, like file size (`tree -h`)
-* Add a loading bar for when the tree is being constructed
-
-#### Long-term
+### High priority
+* Release on `brew`
+  * Precompile binaries
+  * Tag a release
+  * Build a formula and PR it to `homebrew-core`
 * Benchmark running from `~`, vs. `tree` and `rg --files`.
-* Figure out why `parse_args` panics when given stdin input
-* Integration tests for command-line args
-* Build a homebrew formula
+
+### Medium priority
+* Implement optional information displays that `tree` offers, e.g. `tree -h`
 * Add commands for interacting with files under the cursor
-* Add precompiled binaries
+* Figure out why `parse_args` panics when given stdin input
+
+### Low priority
+* Integration tests for command-line args
