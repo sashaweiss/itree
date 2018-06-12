@@ -7,13 +7,13 @@ Whereas `tree` can be overwhelming to use on large directories, `itree` allows y
 
 `tree`             |  `itree`
 :-------------------------:|:-------------------------:
-![Running `tree` from the ~/.rustup directory][rustup_tree_gif]  |  ![Running `itree` from the ~/.rustup directory][rustup_rt_gif]
-![Running `tree` from this project's directory][rt_tree_gif]  |  ![Running `itree` from this project's directory][rt_rt_gif]
+![Running `tree` from the ~/.rustup directory][rustup_tree_gif]  |  ![Running `itree` from the ~/.rustup directory][rustup_itree_gif]
+![Running `tree` from this project's directory][itree_tree_gif]  |  ![Running `itree` from this project's directory][itree_itree_gif]
 
-[rustup_rt_gif]: https://media.giphy.com/media/oOnUBSE5gL45B1zk5K/giphy.gif
-[rt_rt_gif]: https://media.giphy.com/media/9JeJTMYkjcwGmB2XdO/giphy.gif
-[rustup_tree_gif]: https://media.giphy.com/media/kVgETL09kI8pi24RfR/giphy.gif
-[rt_tree_gif]: https://media.giphy.com/media/1d5QqzHOvEHrnfnH6P/giphy.gif
+[rustup_itree_gif]: https://media.giphy.com/media/iYfuv6D56LmdEW78S1/giphy.gif
+[itree_itree_gif]: https://media.giphy.com/media/dZC3ZPi7G1SFpwEfXY/giphy.gif
+[rustup_tree_gif]: https://media.giphy.com/media/4Q06kUFcUcyeo0IVRz/giphy.gif
+[itree_tree_gif]: https://media.giphy.com/media/fdXPaasUE6eKnCF6gs/giphy.gif
 
 ## Installation
 ### Using `brew`
