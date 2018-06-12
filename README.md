@@ -40,6 +40,7 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 * Optionally render information about each node, like file size (`tree -h`)
 * `Tree::new_with_options` doesn't need to give back a result - add a validator to the ignore globs
 * Use an alternate screen for rendering, so as to avoid redraws in the terminal history
+* Add a loading bar for when the tree is being constructed
 
 #### Long-term
 * Benchmark running from `~`, vs. `tree` and `rg --files`.
