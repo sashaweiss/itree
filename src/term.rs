@@ -6,6 +6,7 @@ use termion::cursor::{Goto, Hide, Show};
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
+use termion::screen::{ToAlternateScreen, ToMainScreen};
 
 use tree::Tree;
 
@@ -27,6 +28,7 @@ pub fn navigate(tree: &mut Tree) {
     // For details, see: https://github.com/ticki/termion/issues/42
     let _stdout = io::stdout().into_raw_mode().unwrap();
 
+    println!("{}", ToAlternateScreen);
     println!("{}", Hide);
 
     render_to_stdout(tree)
@@ -64,4 +66,5 @@ pub fn navigate(tree: &mut Tree) {
     }
 
     println!("{}", Show);
+    println!("{}", ToMainScreen);
 }
