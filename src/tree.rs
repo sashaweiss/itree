@@ -76,7 +76,7 @@ impl Tree {
     }
 
     #[allow(dead_code)]
-    fn new_from_dir<P: AsRef<Path>>(dir: &P) -> Self {
+    pub fn new_from_dir<P: AsRef<Path>>(dir: &P) -> Self {
         let opt = TreeOptions::new(dir);
         Tree::new_with_options(opt).unwrap()
     }
