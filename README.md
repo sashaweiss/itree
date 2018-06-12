@@ -38,7 +38,6 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 #### Short-term
 * Render symlinks as "\<name\> -> \<dest\>"
 * Optionally render information about each node, like file size (`tree -h`)
-* `Tree::new_with_options` doesn't need to give back a result - add a validator to the ignore globs
 * Add a loading bar for when the tree is being constructed
 
 #### Long-term

@@ -8,10 +8,8 @@ use rusty_tree::{color, options, term, tree};
 fn main() {
     let options = parse_args();
 
-    match tree::Tree::new_with_options(options) {
-        Ok(mut t) => term::navigate(&mut t),
-        Err(e) => eprintln!("{:?}", e),
-    };
+    let mut t = tree::Tree::new_with_options(options);
+    term::navigate(&mut t);
 }
 
 fn string_to_color(cs: &str) -> Box<color::Color> {
@@ -83,7 +81,8 @@ fn parse_args() -> options::TreeOptions<String> {
                 .help("Specify an additional path to ignore")
                 .takes_value(true)
                 .number_of_values(1)
-                .multiple(true),
+                .multiple(true)
+                .validator(|s| options::validate_ignore(&s)),
         )
         .arg(
             Arg::with_name("bg_color")

@@ -72,21 +72,21 @@ impl fmt::Display for Tree {
 impl Tree {
     #[allow(dead_code)]
     pub fn new() -> Self {
-        Tree::new_with_options(TreeOptions::new(".")).unwrap()
+        Tree::new_with_options(TreeOptions::new("."))
     }
 
     #[allow(dead_code)]
     pub fn new_from_dir<P: AsRef<Path>>(dir: &P) -> Self {
         let opt = TreeOptions::new(dir);
-        Tree::new_with_options(opt).unwrap()
+        Tree::new_with_options(opt)
     }
 
-    pub fn new_with_options<P: AsRef<Path>>(options: TreeOptions<P>) -> Result<Self, String> {
-        let (tree, root) = fs_to_tree(&options.root, &options.fs_opts)?;
+    pub fn new_with_options<P: AsRef<Path>>(options: TreeOptions<P>) -> Self {
+        let (tree, root) = fs_to_tree(&options.root, &options.fs_opts);
 
         let lines = Tree::draw(&tree, root);
 
-        Ok(Self {
+        Self {
             focused: if let Some(c) = tree[root].first_child() {
                 c
             } else {
@@ -96,7 +96,7 @@ impl Tree {
             root,
             lines,
             render_opts: options.render_opts,
-        })
+        }
     }
 
     #[allow(dead_code)]

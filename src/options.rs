@@ -1,6 +1,7 @@
 use std::fmt;
 use std::path::Path;
 
+use ignore::overrides::OverrideBuilder;
 use termion::color::{self, Color};
 
 pub struct RenderOptions {
@@ -32,6 +33,13 @@ pub struct FsOptions {
     pub use_ignore: bool,
     pub use_git_exclude: bool,
     pub custom_ignore: Vec<String>,
+}
+
+pub fn validate_ignore(pat: &str) -> Result<(), String> {
+    OverrideBuilder::new(".")
+        .add(pat)
+        .map(|_| {})
+        .map_err(|e| format!("Error parsing ignore: {:?}", e))
 }
 
 impl FsOptions {

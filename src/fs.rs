@@ -14,10 +14,7 @@ pub struct FsEntry {
 }
 
 /// Create an iterator over the FS, rooted at dir.
-fn get_walker<P: AsRef<Path>>(
-    dir: &P,
-    options: &FsOptions,
-) -> Result<iter::Peekable<Walk>, String> {
+fn get_walker<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> iter::Peekable<Walk> {
     let mut builder = WalkBuilder::new(&dir);
 
     builder
@@ -34,14 +31,12 @@ fn get_walker<P: AsRef<Path>>(
 
     let mut ovs = OverrideBuilder::new(dir);
     for file in options.custom_ignore.iter() {
-        ovs.add(&file)
-            .map_err(|e| format!("Error adding custom ignore glob: {:?}", e))?;
+        ovs.add(&file).unwrap();
     }
 
-    builder.overrides(ovs.build()
-        .map_err(|e| format!("Error adding custom ignore glob: {:?}", e))?);
+    builder.overrides(ovs.build().unwrap());
 
-    Ok(builder.build().peekable())
+    builder.build().peekable()
 }
 
 /// Add a node to `tree`, as a child of `node`, with `data` as the contents.
@@ -59,11 +54,8 @@ fn path_to_string<P: AsRef<Path>>(p: &P) -> String {
 }
 
 /// Collect an Arena representation of the file system.
-pub fn fs_to_tree<P: AsRef<Path>>(
-    dir: &P,
-    options: &FsOptions,
-) -> Result<(Arena<FsEntry>, NodeId), String> {
-    let mut walk = get_walker(dir, &options)?;
+pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> (Arena<FsEntry>, NodeId) {
+    let mut walk = get_walker(dir, &options);
 
     let mut tree = Arena::<FsEntry>::new();
     let root: NodeId;
@@ -129,7 +121,7 @@ pub fn fs_to_tree<P: AsRef<Path>>(
         }
     }
 
-    Ok((tree, root))
+    (tree, root)
 }
 
 #[cfg(test)]
@@ -152,7 +144,7 @@ mod tests {
     }
 
     fn test_tree(dir: &PathBuf) -> (Arena<FsEntry>, NodeId) {
-        fs_to_tree(dir, &FsOptions::new()).unwrap()
+        fs_to_tree(dir, &FsOptions::new())
     }
 
     #[test]
