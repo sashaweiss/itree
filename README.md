@@ -1,7 +1,7 @@
 # itree
 `itree` is an interactively navigable version of the Linux utility `tree`, built in Rust. It aims to extend the functionality of `tree`, providing an intuitive view of a directory's structure in a manageable, interactively navigable command-line interface.
 
-Whereas `tree` can be overwhelming to use on large directories, `itree` allows you to inspect a filesystem in an intuitive fashion, at your own pace. It also respects gitignore rules, allowing you to focus on the files you're most interested in.
+Whereas `tree` can be overwhelming to use on large directories, `itree` allows you to inspect a filesystem in an intuitive fashion, at your own pace. It also respects gitignore rules, allowing you to focus on the files you're most interested in!
 
 `itree` relies on the FS walker used by [ripgrep](https://github.com/BurntSushi/ripgrep/tree/master/ignore), bringing you the usefulness of `tree` with as little overhead/slowdown as possible!
 
@@ -16,14 +16,19 @@ Whereas `tree` can be overwhelming to use on large directories, `itree` allows y
 [rt_tree_gif]: https://media.giphy.com/media/1d5QqzHOvEHrnfnH6P/giphy.gif
 
 ## Installation
-`itree` is not yet on any package managers, and so currently must be built from source. Make sure you have Rust and `cargo` installed! (If not, then install via [Rustup](https://rustup.rs/).) Then:
+### Using `brew`
+`itree` is available via Homebrew! Simply run:
+```
+$ brew install sashaweiss/projects/itree
+```
+
+### From source
+To build from source, first make sure you have Rust and `cargo` installed! (If not, then install via [Rustup](https://rustup.rs/).) Then:
 ```
 $ git clone https://github.com/sashaweiss/itree
 $ cd itree
 $ cargo install
 ```
-
-Package managers and precompiled binaries to come!
 
 ## Usage
 Running `itree` will start an interactive CLI. Use `itree -h` to see a full list of configurations and UI options!
@@ -36,10 +41,6 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 ## My to-do list
 
 ### High priority
-* Release on `brew`
-  * Precompile binaries
-  * Tag a release
-  * Build a formula and PR it to `homebrew-core`
 * Benchmark running from `~`, vs. `tree` and `rg --files`.
 
 ### Medium priority
