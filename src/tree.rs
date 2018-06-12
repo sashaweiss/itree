@@ -243,7 +243,17 @@ enum Indent {
 
 impl Tree {
     pub fn summary(&self) -> String {
-        format!("{} directories, {} files", self.n_dirs, self.n_files)
+        format!(
+            "{} {}, {} {}",
+            self.n_dirs,
+            if self.n_dirs == 1 {
+                "directory"
+            } else {
+                "directories"
+            },
+            self.n_files,
+            if self.n_files == 1 { "file" } else { "files" }
+        )
     }
 
     fn draw(tree: &Arena<FsEntry>, root: NodeId) -> TreeLines {
@@ -304,26 +314,18 @@ mod tests {
         format!("{}", Tree::new_from_dir(dir))
     }
 
-    fn render_around_focus_test_dir() -> String {
-        let mut v = Vec::new();
-        Tree::new_from_dir(&test_dir(""))
-            .render_around_focus(&mut v, 1000)
-            .unwrap();
-
-        ::std::str::from_utf8(&v).unwrap().to_owned()
-    }
-
     #[test]
     fn test_draw_abs_path() {
         let dir = abs_test_dir("simple");
 
         let exp = format!(
-            "{}\n{} {}\n{} {}\n",
+            "{}\n{} {}\n{} {}\n\n{}\n",
             dir.display(),
             MID_BRANCH,
             "myfile",
             END_BRANCH,
             "myotherfile",
+            "0 directories, 2 files",
         );
 
         assert_eq!(exp, draw_to_string(&dir));
@@ -334,12 +336,13 @@ mod tests {
         let dir = test_dir("simple");
 
         let exp = format!(
-            "{}\n{} {}\n{} {}\n",
+            "{}\n{} {}\n{} {}\n\n{}\n",
             dir.display(),
             MID_BRANCH,
             "myfile",
             END_BRANCH,
             "myotherfile",
+            "0 directories, 2 files",
         );
 
         assert_eq!(exp, draw_to_string(&dir));
@@ -350,7 +353,7 @@ mod tests {
         let dir = test_dir("one_dir");
 
         let exp = format!(
-            "{}\n{} {}\n{}{} {}\n{} {}\n",
+            "{}\n{} {}\n{}{} {}\n{} {}\n\n{}\n",
             dir.display(),
             MID_BRANCH,
             "mydir",
@@ -359,6 +362,7 @@ mod tests {
             "myfile",
             END_BRANCH,
             "myotherfile",
+            "1 directory, 2 files",
         );
 
         assert_eq!(exp, draw_to_string(&dir));
@@ -369,12 +373,13 @@ mod tests {
         let dir = test_dir("link");
 
         let exp = format!(
-            "{}\n{} {}\n{} {}\n",
+            "{}\n{} {}\n{} {}\n\n{}\n",
             dir.display(),
             MID_BRANCH,
             "dest -> source",
             END_BRANCH,
             "source",
+            "0 directories, 2 files",
         );
 
         assert_eq!(exp, draw_to_string(&dir));
@@ -387,14 +392,14 @@ mod tests {
         t.focus_up();
         assert_eq!("link", t.focused().name);
 
-        t.focus_left();
+        t.focus_right();
         assert_eq!("one_dir", t.focused().name);
         t.focus_down();
         assert_eq!("mydir", t.focused().name);
 
-        t.focus_right();
-        assert_eq!("mydir", t.focused().name);
         t.focus_left();
+        assert_eq!("mydir", t.focused().name);
+        t.focus_right();
         assert_eq!("myotherfile", t.focused().name);
 
         t.focus_up();
