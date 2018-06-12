@@ -41,7 +41,8 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 ## My to-do list
 
 ### High priority
-* Benchmark running from `~`, vs. `tree` and `rg --files`.
+* Benchmark running from `~`, vs. `tree` and `rg --files`
+* Write more comprehensive documentation of source code
 
 ### Medium priority
 * Implement optional information displays that `tree` offers, e.g. `tree -h`
