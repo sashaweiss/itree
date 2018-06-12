@@ -44,16 +44,16 @@ pub fn navigate(tree: &mut Tree) {
         let mut keys = io::stdin().keys();
         while let Some(Ok(key)) = keys.next() {
             match key {
-                Key::Left => {
+                Key::Left | Key::Char('h') => {
                     tree.focus_up();
                 }
-                Key::Right => {
+                Key::Right | Key::Char('l')=> {
                     tree.focus_down();
                 }
-                Key::Up => {
+                Key::Up | Key::Char('k') => {
                     tree.focus_left();
                 }
-                Key::Down => {
+                Key::Down | Key::Char('j') => {
                     tree.focus_right();
                 }
                 Key::Esc | Key::Char('q') | Key::Ctrl('c') => break,
