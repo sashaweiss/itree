@@ -1,4 +1,5 @@
 use std::ffi::OsStr;
+use std::fs::read_link;
 use std::iter;
 use std::path::Path;
 
@@ -53,6 +54,36 @@ fn path_to_string<P: AsRef<Path>>(p: &P) -> String {
     }.to_owned()
 }
 
+fn de_to_fsentry(de: DirEntry) -> FsEntry {
+    let mut name = path_to_string(&de.path());
+    if de.path_is_symlink() {
+        let dest = match read_link(&de.path()) {
+            Ok(d) => path_to_string(&d),
+            Err(_) => "<error reading dest>".to_owned(),
+        };
+
+        name.push_str(" -> ");
+        name.push_str(&dest);
+    }
+
+    FsEntry { de, name }
+}
+
+fn root_to_fsentry<P: AsRef<Path>>(dir: &P, de: DirEntry) -> FsEntry {
+    FsEntry {
+        de,
+        name: if dir.as_ref() == OsStr::new(".") {
+            ".".to_owned()
+        } else {
+            let mut d = format!("{}", dir.as_ref().display());
+            if d.ends_with("/") {
+                d.pop();
+            }
+            d
+        },
+    }
+}
+
 /// Collect an Arena representation of the file system.
 pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> (Arena<FsEntry>, NodeId) {
     let mut walk = get_walker(dir, &options);
@@ -60,20 +91,9 @@ pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> (Arena<FsEntr
     let mut tree = Arena::<FsEntry>::new();
     let root: NodeId;
 
-    // Get the root node
+    // Get the root node (never a symlink)
     if let Some(Ok(de)) = walk.next() {
-        root = tree.new_node(FsEntry {
-            de,
-            name: if dir.as_ref() == OsStr::new(".") {
-                ".".to_owned()
-            } else {
-                let mut d = format!("{}", dir.as_ref().display());
-                if d.ends_with("/") {
-                    d.pop();
-                }
-                d
-            },
-        });
+        root = tree.new_node(root_to_fsentry(dir, de));
     } else {
         panic!("Failed to get the root!");
     }
@@ -86,10 +106,7 @@ pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> (Arena<FsEntr
 
     let mut curr = root;
     while let Some(Ok(de)) = walk.next() {
-        let te = FsEntry {
-            name: path_to_string(&de.path()),
-            de: de,
-        };
+        let te = de_to_fsentry(de);
 
         match match walk.peek() {
             Some(&Ok(ref next)) => {
@@ -128,7 +145,6 @@ pub fn fs_to_tree<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> (Arena<FsEntr
 mod tests {
     use super::*;
 
-    use std::ffi::OsStr;
     use std::path::PathBuf;
 
     fn test_dir(dir: &str) -> PathBuf {
@@ -139,10 +155,6 @@ mod tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(test_dir(dir))
     }
 
-    fn to_osstr(s: &str) -> &OsStr {
-        OsStr::new(s)
-    }
-
     fn test_tree(dir: &PathBuf) -> (Arena<FsEntry>, NodeId) {
         fs_to_tree(dir, &FsOptions::new())
     }
@@ -150,53 +162,68 @@ mod tests {
     #[test]
     fn test_collect_fs_abs_path() {
         let (tree, root) = test_tree(&abs_test_dir("simple"));
-        assert_eq!("simple", tree[root].data.de.file_name());
+
+        let mut curr = ::std::env::current_dir().unwrap();
+        curr.push("resources/test/simple");
+        assert_eq!(
+            format!("{}", curr.as_path().display()),
+            tree[root].data.name
+        );
 
         let children = root.children(&tree)
-            .map(|nid| tree[nid].data.de.path().file_name().unwrap())
-            .collect::<Vec<&OsStr>>();
+            .map(|nid| tree[nid].data.name.as_str())
+            .collect::<Vec<&str>>();
 
-        assert!(children.contains(&to_osstr("myfile")));
-        assert!(children.contains(&to_osstr("myotherfile")));
+        assert!(children.contains(&"myfile"));
+        assert!(children.contains(&"myotherfile"));
     }
 
     #[test]
     fn test_collect_fs_rel_path() {
         let (tree, root) = test_tree(&test_dir("simple"));
-        assert_eq!("simple", tree[root].data.de.file_name());
+        assert_eq!(tree[root].data.name, "resources/test/simple");
 
         let children = root.children(&tree)
-            .map(|nid| tree[nid].data.de.path().file_name().unwrap())
-            .collect::<Vec<&OsStr>>();
+            .map(|nid| tree[nid].data.name.as_str())
+            .collect::<Vec<&str>>();
 
-        assert!(children.contains(&to_osstr("myfile")));
-        assert!(children.contains(&to_osstr("myotherfile")));
+        assert!(children.contains(&"myfile"));
+        assert!(children.contains(&"myotherfile"));
     }
 
     #[test]
     fn test_collect_fs_dir() {
         let (tree, root) = test_tree(&test_dir("one_dir"));
-        assert_eq!("one_dir", tree[root].data.de.file_name());
+        assert_eq!(tree[root].data.name, "resources/test/one_dir");
 
         let children = root.children(&tree)
-            .map(|nid| tree[nid].data.de.path().file_name().unwrap())
-            .collect::<Vec<&OsStr>>();
+            .map(|nid| tree[nid].data.name.as_str())
+            .collect::<Vec<&str>>();
 
-        assert!(children.contains(&to_osstr("mydir")));
-        assert!(children.contains(&to_osstr("myotherfile")));
+        assert!(children.contains(&"mydir"));
+        assert!(children.contains(&"myotherfile"));
 
         let dir_node = root.children(&tree)
-            .filter(|nid| tree[*nid].data.de.path().file_name() == Some(to_osstr("mydir")))
+            .filter(|nid| tree[*nid].data.name.as_str() == "mydir")
             .next()
             .unwrap();
 
         assert_eq!(
-            tree[dir_node.children(&tree).next().unwrap()]
-                .data
-                .de
-                .path()
-                .file_name(),
-            Some(to_osstr("myfile"))
+            tree[dir_node.children(&tree).next().unwrap()].data.name,
+            "myfile",
         );
+    }
+
+    #[test]
+    fn test_link_fsentry() {
+        let (tree, root) = test_tree(&test_dir("link"));
+        assert_eq!("resources/test/link", tree[root].data.name);
+
+        let children = root.children(&tree)
+            .map(|nid| tree[nid].data.name.as_str())
+            .collect::<Vec<&str>>();
+
+        assert!(children.contains(&"source"));
+        assert!(children.contains(&"dest -> source"));
     }
 }

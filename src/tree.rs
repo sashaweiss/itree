@@ -294,6 +294,15 @@ mod tests {
         format!("{}", Tree::new_from_dir(dir))
     }
 
+    fn render_around_focus_test_dir() -> String {
+        let mut v = Vec::new();
+        Tree::new_from_dir(&test_dir(""))
+            .render_around_focus(&mut v, 1000)
+            .unwrap();
+
+        ::std::str::from_utf8(&v).unwrap().to_owned()
+    }
+
     #[test]
     fn test_draw_abs_path() {
         let dir = abs_test_dir("simple");
@@ -346,20 +355,36 @@ mod tests {
     }
 
     #[test]
+    fn test_draw_link() {
+        let dir = test_dir("link");
+
+        let exp = format!(
+            "{}\n{} {}\n{} {}\n",
+            dir.display(),
+            MID_BRANCH,
+            "dest -> source",
+            END_BRANCH,
+            "source",
+        );
+
+        assert_eq!(exp, draw_to_string(&dir));
+    }
+
+    #[test]
     fn test_focus() {
         let mut t = Tree::new_from_dir(&test_dir(""));
-        assert_eq!("one_dir", t.focused().name);
+        assert_eq!("link", t.focused().name);
         t.focus_up();
-        assert_eq!("one_dir", t.focused().name);
+        assert_eq!("link", t.focused().name);
 
+        t.focus_left();
+        assert_eq!("one_dir", t.focused().name);
         t.focus_down();
         assert_eq!("mydir", t.focused().name);
-        t.focus_left();
-        assert_eq!("mydir", t.focused().name);
 
         t.focus_right();
-        assert_eq!("myotherfile", t.focused().name);
-        t.focus_right();
+        assert_eq!("mydir", t.focused().name);
+        t.focus_left();
         assert_eq!("myotherfile", t.focused().name);
 
         t.focus_up();
