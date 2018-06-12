@@ -6,7 +6,7 @@ use std::path::Path;
 use std::{fmt, io};
 
 use indextree::{Arena, NodeId};
-use termion::color::{self, Bg, Color, Reset};
+use termion::color::{Bg, Fg, Reset};
 
 use fs::{fs_to_tree, FsEntry};
 use options::*;
@@ -183,9 +183,11 @@ impl Tree {
         bottom: usize,
         highlight: usize,
     ) -> io::Result<()> {
+        print!("{}", Fg(self.render_opts.fg_color.deref()));
         for i in top..bottom {
             self.render_line(writer, i, i == highlight, i == bottom - 1)?;
         }
+        print!("{}", Fg(Reset));
 
         Ok(())
     }

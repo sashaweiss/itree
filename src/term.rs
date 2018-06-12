@@ -2,7 +2,6 @@ use std::io;
 
 use termion;
 use termion::clear::All;
-use termion::color;
 use termion::cursor::{Goto, Hide, Show};
 use termion::event::Key;
 use termion::input::TermRead;
