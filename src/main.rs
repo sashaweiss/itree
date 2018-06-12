@@ -1,14 +1,9 @@
 extern crate clap;
-extern crate ignore;
-extern crate indextree;
-extern crate termion;
+extern crate rusty_tree;
 
 use clap::{App, Arg};
 
-mod fs;
-mod options;
-mod term;
-mod tree;
+use rusty_tree::{color, options, term, tree};
 
 fn main() {
     let options = parse_args();
@@ -19,24 +14,24 @@ fn main() {
     };
 }
 
-fn string_to_color(cs: &str) -> Box<termion::color::Color> {
+fn string_to_color(cs: &str) -> Box<color::Color> {
     match cs {
-        "black" => Box::new(termion::color::Black),
-        "blue" => Box::new(termion::color::Blue),
-        "cyan" => Box::new(termion::color::Cyan),
-        "green" => Box::new(termion::color::Green),
-        "magenta" => Box::new(termion::color::Magenta),
-        "red" => Box::new(termion::color::Red),
-        "white" => Box::new(termion::color::White),
-        "yellow" => Box::new(termion::color::Yellow),
-        "lightblack" => Box::new(termion::color::LightBlack),
-        "lightblue" => Box::new(termion::color::LightBlue),
-        "lightcyan" => Box::new(termion::color::LightCyan),
-        "lightgreen" => Box::new(termion::color::LightGreen),
-        "lightmagenta" => Box::new(termion::color::LightMagenta),
-        "lightred" => Box::new(termion::color::LightRed),
-        "lightwhite" => Box::new(termion::color::LightWhite),
-        "lightyellow" => Box::new(termion::color::LightYellow),
+        "black" => Box::new(color::Black),
+        "blue" => Box::new(color::Blue),
+        "cyan" => Box::new(color::Cyan),
+        "green" => Box::new(color::Green),
+        "magenta" => Box::new(color::Magenta),
+        "red" => Box::new(color::Red),
+        "white" => Box::new(color::White),
+        "yellow" => Box::new(color::Yellow),
+        "lightblack" => Box::new(color::LightBlack),
+        "lightblue" => Box::new(color::LightBlue),
+        "lightcyan" => Box::new(color::LightCyan),
+        "lightgreen" => Box::new(color::LightGreen),
+        "lightmagenta" => Box::new(color::LightMagenta),
+        "lightred" => Box::new(color::LightRed),
+        "lightwhite" => Box::new(color::LightWhite),
+        "lightyellow" => Box::new(color::LightYellow),
         _ => panic!("unrecognized color string"),
     }
 }

@@ -355,21 +355,21 @@ mod tests {
     #[test]
     fn test_focus() {
         let mut t = Tree::new_from_dir(&test_dir(""));
-        assert_eq!("resources/test", t.focused().name);
+        assert_eq!("one_dir", t.focused().name);
         t.focus_up();
-        assert_eq!("resources/test", t.focused().name);
+        assert_eq!("one_dir", t.focused().name);
 
         t.focus_down();
-        assert_eq!("one_dir", t.focused().name);
+        assert_eq!("mydir", t.focused().name);
         t.focus_left();
-        assert_eq!("one_dir", t.focused().name);
+        assert_eq!("mydir", t.focused().name);
 
         t.focus_right();
-        assert_eq!("simple", t.focused().name);
+        assert_eq!("myotherfile", t.focused().name);
         t.focus_right();
-        assert_eq!("simple", t.focused().name);
+        assert_eq!("myotherfile", t.focused().name);
 
         t.focus_up();
-        assert_eq!("resources/test", t.focused().name);
+        assert_eq!("one_dir", t.focused().name);
     }
 }
