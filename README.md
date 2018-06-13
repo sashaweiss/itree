@@ -40,6 +40,7 @@ $ cargo install
 Running `itree` will start an interactive CLI. Use `itree -h` to see a full list of configurations and UI options!
 
 * Use the arrow keys to move around, as makes sense visually: `Up` and `Down` move between files in the same directory level, while `Left` and `Right` move one level higher and lower in the directory tree, respectively.
+  * `itree` also supports Vim keybindings - `h`, `j`, `k`, and `l` can be used instead of the arrow keys.
 * Use `f` to fold/unfold a directory.
 * Use `q`, `Ctrl-C`, or `Esc` to exit.
 
