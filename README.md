@@ -54,5 +54,6 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 ### Low priority
 * Integration tests for command-line args
 
-### Known bugs
+### Known bugs (need more research)
 * Sometimes (no pattern identifiable yet) it acts as if the terminal window were 4-5 lines shorter than it is, and leaves a blank space at the bottom of the screen.
+* When run from a root that contains folders that may have restricted permissions (e.g. `/`), not all subdirectories that I expected appear.
