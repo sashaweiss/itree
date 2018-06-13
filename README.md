@@ -49,6 +49,7 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 ## My to-do list
 
 ### High priority
+* Figure out bug 2) - this cripples its use from above-$HOME directories, and makes benchmarking invalid
 * Benchmark running from `~`, vs. `tree` and `rg --files`
 * Write more comprehensive documentation of source code
 
@@ -58,9 +59,6 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 * Add command for `cd`-ing to the folder the cursor is currently in
 * Figure out why `parse_args` panics when given stdin input
 
-### Low priority
-* Integration tests for command-line args
-
 ### Known bugs (need more research)
-* Sometimes (no pattern identifiable yet) it acts as if the terminal window were 4-5 lines shorter than it is, and leaves a blank space at the bottom of the screen.
-* When run from a root that contains folders that may have restricted permissions (e.g. `/`), not all subdirectories that I expected appear.
+1) Sometimes (no pattern identifiable yet) it acts as if the terminal window were 4-5 lines shorter than it is, and leaves a blank space at the bottom of the screen.
+2) When run from a root that contains folders that may have restricted permissions (e.g. `/`), not all subdirectories that I expected appear.
