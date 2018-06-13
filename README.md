@@ -22,8 +22,14 @@ Whereas `tree` can be overwhelming to use on large directories, `itree` allows y
 $ brew install sashaweiss/projects/itree
 ```
 
+### Using `cargo`
+`itree` is also available on crates.io! Simply run:
+```
+$ cargo install itree
+```
+
 ### From source
-To build from source, first make sure you have Rust and `cargo` installed! (If not, then install via [Rustup](https://rustup.rs/).) Then:
+To build from source, first make sure you have Rust and `cargo` installed. (If not, then install via [Rustup](https://rustup.rs/).) Then:
 ```
 $ git clone https://github.com/sashaweiss/itree
 $ cd itree
