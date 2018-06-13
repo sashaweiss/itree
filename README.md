@@ -53,3 +53,6 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 
 ### Low priority
 * Integration tests for command-line args
+
+### Known bugs
+* Sometimes (no pattern identifiable yet) it acts as if the terminal window were 4-5 lines shorter than it is, and leaves a blank space at the bottom of the screen.
