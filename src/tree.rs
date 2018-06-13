@@ -13,10 +13,13 @@ use options::*;
 pub const MID_BRANCH: &str = "├──";
 pub const END_BRANCH: &str = "└──";
 
+#[derive(Debug, Copy, Clone)]
+enum Indent {
+    Bar,
+    Blank,
+}
 pub const BLANK_INDENT: &str = "    ";
 pub const BAR_INDENT: &str = "│   ";
-
-/****** Tree ******/
 
 #[derive(Debug)]
 struct TreeLine {
@@ -153,9 +156,64 @@ impl Tree {
             Some(ps) => ps,
         };
     }
-}
 
-impl Tree {
+    /****** Precomputing drawn lines ******/
+
+    pub fn summary(&self) -> String {
+        format!(
+            "{} {}, {} {}",
+            self.n_dirs,
+            if self.n_dirs == 1 {
+                "directory"
+            } else {
+                "directories"
+            },
+            self.n_files,
+            if self.n_files == 1 { "file" } else { "files" }
+        )
+    }
+
+    fn draw(tree: &Arena<FsEntry>, root: NodeId) -> TreeLines {
+        let mut tree_lines = TreeLines::new();
+
+        // Draw the root
+        tree_lines.add(root, String::new());
+
+        // Draw the rest of the tree
+        Tree::draw_from(&mut tree_lines, &tree, root, &mut vec![]);
+
+        tree_lines
+    }
+
+    fn draw_from(
+        tree_lines: &mut TreeLines,
+        tree: &Arena<FsEntry>,
+        root: NodeId,
+        indents: &mut Vec<Indent>,
+    ) {
+        for child in root.children(&tree) {
+            let last = Some(child) == tree[root].last_child();
+
+            let mut prefix = String::new();
+            for i in indents.iter() {
+                prefix.push_str(match *i {
+                    Indent::Bar => BAR_INDENT,
+                    Indent::Blank => BLANK_INDENT,
+                });
+            }
+            prefix.push_str(if last { END_BRANCH } else { MID_BRANCH });
+
+            tree_lines.add(child, prefix);
+
+            indents.push(if last { Indent::Blank } else { Indent::Bar });
+            Tree::draw_from(tree_lines, tree, child, indents);
+        }
+
+        indents.pop();
+    }
+
+    /****** Rendering and paging ******/
+
     /// Find the bounds of the range of n consecutively renderable lines
     /// around a given line.
     ///
@@ -279,67 +337,6 @@ impl Tree {
         } else {
             Ok(())
         }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-enum Indent {
-    Bar,
-    Blank,
-}
-
-impl Tree {
-    pub fn summary(&self) -> String {
-        format!(
-            "{} {}, {} {}",
-            self.n_dirs,
-            if self.n_dirs == 1 {
-                "directory"
-            } else {
-                "directories"
-            },
-            self.n_files,
-            if self.n_files == 1 { "file" } else { "files" }
-        )
-    }
-
-    fn draw(tree: &Arena<FsEntry>, root: NodeId) -> TreeLines {
-        let mut tree_lines = TreeLines::new();
-
-        // Draw the root
-        tree_lines.add(root, String::new());
-
-        // Draw the rest of the tree
-        Tree::draw_from(&mut tree_lines, &tree, root, &mut vec![]);
-
-        tree_lines
-    }
-
-    fn draw_from(
-        tree_lines: &mut TreeLines,
-        tree: &Arena<FsEntry>,
-        root: NodeId,
-        indents: &mut Vec<Indent>,
-    ) {
-        for child in root.children(&tree) {
-            let last = Some(child) == tree[root].last_child();
-
-            let mut prefix = String::new();
-            for i in indents.iter() {
-                prefix.push_str(match *i {
-                    Indent::Bar => BAR_INDENT,
-                    Indent::Blank => BLANK_INDENT,
-                });
-            }
-            prefix.push_str(if last { END_BRANCH } else { MID_BRANCH });
-
-            tree_lines.add(child, prefix);
-
-            indents.push(if last { Indent::Blank } else { Indent::Bar });
-            Tree::draw_from(tree_lines, tree, child, indents);
-        }
-
-        indents.pop();
     }
 }
 
