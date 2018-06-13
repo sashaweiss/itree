@@ -1,4 +1,3 @@
-use std::cmp::max;
 use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Deref;
@@ -23,6 +22,8 @@ pub const BAR_INDENT: &str = "│   ";
 struct TreeLine {
     node: NodeId,
     prefix: String,
+    prev: Option<usize>,
+    next: usize,
 }
 
 #[derive(Debug)]
@@ -43,7 +44,16 @@ impl TreeLines {
 
     fn add(&mut self, node: NodeId, prefix: String) {
         self.inds.insert(node, self.count);
-        self.lines.push(TreeLine { node, prefix });
+        self.lines.push(TreeLine {
+            node,
+            prefix,
+            prev: if self.count == 0 {
+                None
+            } else {
+                Some(self.count - 1)
+            },
+            next: self.count + 1,
+        });
         self.count += 1;
     }
 }
@@ -146,45 +156,82 @@ impl Tree {
 }
 
 impl Tree {
-    /// Render n lines of the tree, around the focused node.
+    /// Find the bounds of the range of n consecutively renderable lines
+    /// around a given line.
     ///
-    /// n/2 lines above the node and n/2 lines below will be rendered.
-    /// If the focus is within n/2 lines of the top or bottom of the tree,
+    /// Lines are considered consecutive if they follow each other in the
+    /// doubly-linked list in which a line's `next` and `prev` fields comprise
+    /// the edges.
+    ///
+    /// The range will include n/2 lines above and n/2 lines below the given line.
+    /// If the given line is within n/2 lines of the top or bottom of the tree,
     /// the remaining space will be used on the other side.
     ///
-    /// TODO: handle line wrappings
-    pub fn render_around_focus<W: Write>(&self, writer: &mut W, n: i64) -> io::Result<()> {
-        let y = self.lines.inds[&self.focused] as i64;
+    /// TODO: handle line wrappings (i.e. a given "line" may occupy more than
+    /// one visual line).
+    fn bounds_of_range_around_line(&self, line: usize, n: usize) -> (usize, usize) {
         let space = n / 2;
 
-        let mut start = y - space;
-        let mut end = y + space + n % 2;
-        let count = self.lines.count as i64;
-
-        if start < 0 {
-            end += -1 * start;
-            start = 0;
+        // Roll the start back n/2 spaces. If fewer, save the diff.
+        let mut start = line;
+        let mut start_diff = 0;
+        for i in 0..space {
+            if let Some(prev) = self.lines.lines[start].prev {
+                start = prev;
+            } else {
+                start_diff = space - i;
+                break;
+            }
         }
 
-        if end > count {
-            start = max(0, start - (end - count));
-            end = count;
+        // Roll the end forward n/2 + start_diff spaces. If fewer, save the diff.
+        let mut end = line;
+        let mut end_diff = 0;
+        let end_max = space + n % 2 + start_diff;
+        for i in 0..end_max {
+            let next = self.lines.lines[end].next;
+            if let Some(_) = self.lines.lines.get(next) {
+                end = next;
+            } else {
+                end += 1; // Range is non-inclusive of end
+                end_diff = end_max - i - 1;
+                break;
+            }
         }
 
-        self.render(writer, start as usize, end as usize, y as usize)
+        // Roll the start back at most an additional end_diff spaces.
+        for _ in 0..end_diff {
+            if let Some(prev) = self.lines.lines[start].prev {
+                start = prev;
+            } else {
+                break;
+            }
+        }
+
+        (start, end)
     }
 
-    /// Render the lines of the tree in the range [top, bottom).
-    pub fn render<W: Write>(
-        &self,
-        writer: &mut W,
-        top: usize,
-        bottom: usize,
-        highlight: usize,
-    ) -> io::Result<()> {
+    /// Render at most n consecutive lines of the tree around the focused node.
+    ///
+    /// Lines are considered consecutive if they are adjacent in the
+    /// doubly-linked list of lines in which a line's `next` and `prev`
+    /// fields comprise the links.
+    pub fn render_around_focus<W: Write>(&self, writer: &mut W, n: usize) -> io::Result<()> {
+        let y = self.lines.inds[&self.focused];
+        let (mut start, end) = self.bounds_of_range_around_line(y, n);
+
         print!("{}", Fg(self.render_opts.fg_color.deref()));
-        for i in top..bottom {
-            self.render_line(writer, i, i == highlight, i == bottom - 1)?;
+        for i in start..end {
+            let next = self.lines.lines[start].next;
+            let last = self.lines.lines.get(next).is_none() || i == end - 1;
+
+            self.render_line(writer, start, start == y, last)?;
+
+            if last {
+                break;
+            } else {
+                start = next;
+            }
         }
         print!("{}", Fg(Reset));
 
@@ -199,13 +246,13 @@ impl Tree {
         &self,
         writer: &mut W,
         ind: usize,
-        highlight: bool,
+        focus: bool,
         last: bool,
     ) -> io::Result<()> {
         let line = &self.lines.lines[ind];
         let ending = if last { "" } else { "\r\n" };
 
-        if highlight {
+        if focus {
             write!(
                 writer,
                 "{}{}{}{}{}{}",

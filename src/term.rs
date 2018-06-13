@@ -20,7 +20,7 @@ fn render_to_stdout(tree: &Tree) -> io::Result<()> {
 
     clear();
     let (_, y) = termion::terminal_size()?;
-    tree.render_around_focus(&mut stdout, y as i64)
+    tree.render_around_focus(&mut stdout, y as usize)
 }
 
 pub fn navigate(tree: &mut Tree) {
@@ -47,7 +47,7 @@ pub fn navigate(tree: &mut Tree) {
                 Key::Left | Key::Char('h') => {
                     tree.focus_up();
                 }
-                Key::Right | Key::Char('l')=> {
+                Key::Right | Key::Char('l') => {
                     tree.focus_down();
                 }
                 Key::Up | Key::Char('k') => {
