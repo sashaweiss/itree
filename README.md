@@ -10,8 +10,8 @@ Whereas `tree` can be overwhelming to use on large directories, `itree` allows y
 ![Running `tree` from the ~/.rustup directory][rustup_tree_gif]  |  ![Running `itree` from the ~/.rustup directory][rustup_itree_gif]
 ![Running `tree` from this project's directory][itree_tree_gif]  |  ![Running `itree` from this project's directory][itree_itree_gif]
 
-[rustup_itree_gif]: https://media.giphy.com/media/iYfuv6D56LmdEW78S1/giphy.gif
-[itree_itree_gif]: https://media.giphy.com/media/dZC3ZPi7G1SFpwEfXY/giphy.gif
+[rustup_itree_gif]: https://media.giphy.com/media/7Jq6jStr9wlVU79gzR/giphy.gif
+[itree_itree_gif]: https://media.giphy.com/media/9xaSG1BHu6GmAZlJTS/giphy.gif
 [rustup_tree_gif]: https://media.giphy.com/media/4Q06kUFcUcyeo0IVRz/giphy.gif
 [itree_tree_gif]: https://media.giphy.com/media/fdXPaasUE6eKnCF6gs/giphy.gif
 
@@ -34,6 +34,7 @@ $ cargo install
 Running `itree` will start an interactive CLI. Use `itree -h` to see a full list of configurations and UI options!
 
 * Use the arrow keys to move around, as makes sense visually: `Up` and `Down` move between files in the same directory level, while `Left` and `Right` move one level higher and lower in the directory tree, respectively.
+* Use `f` to fold/unfold a directory.
 * Use `q`, `Ctrl-C`, or `Esc` to exit.
 
 More commands to come! (E.g. deleting, moving, renaming files.)
@@ -45,9 +46,9 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 * Write more comprehensive documentation of source code
 
 ### Medium priority
-* Implement dynamic directory folding
 * Implement optional information displays that `tree` offers, e.g. `tree -h`
 * Add commands for interacting with files under the cursor
+* Add command for `cd`-ing to the folder the cursor is currently in
 * Figure out why `parse_args` panics when given stdin input
 
 ### Low priority
