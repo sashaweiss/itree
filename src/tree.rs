@@ -21,12 +21,15 @@ enum Indent {
 pub const BLANK_INDENT: &str = "    ";
 pub const BAR_INDENT: &str = "│   ";
 
+pub const FOLD_MARK: &str = "*";
+
 #[derive(Debug)]
 struct TreeLine {
     node: NodeId,
     prefix: String,
     prev: Option<usize>,
     next: usize,
+    folded: bool,
 }
 
 #[derive(Debug)]
@@ -56,6 +59,7 @@ impl TreeLines {
                 Some(self.count - 1)
             },
             next: self.count + 1,
+            folded: false,
         });
         self.count += 1;
     }
@@ -76,8 +80,17 @@ impl fmt::Display for Tree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f, "{}", self.tree[self.root].data.name)?;
 
-        for l in &self.lines.lines[1..] {
-            writeln!(f, "{} {}", l.prefix, self.tree[l.node].data.name)?;
+        let mut l_ind = 1;
+        while let Some(line) = &self.lines.lines.get(l_ind) {
+            writeln!(
+                f,
+                "{} {}{}",
+                line.prefix,
+                self.tree[line.node].data.name,
+                if line.folded { FOLD_MARK } else { "" },
+            )?;
+
+            l_ind = line.next;
         }
 
         writeln!(f, "\n{}", self.summary())?;
@@ -139,7 +152,13 @@ impl Tree {
     pub fn focus_down(&mut self) {
         self.focused = match self.tree[self.focused].first_child() {
             None => self.focused,
-            Some(ps) => ps,
+            Some(ps) => {
+                if self.focused_line().folded {
+                    self.focused
+                } else {
+                    ps
+                }
+            }
         };
     }
 
@@ -155,6 +174,93 @@ impl Tree {
             None => self.focused,
             Some(ps) => ps,
         };
+    }
+
+    fn line_for_node(&self, node: NodeId) -> &TreeLine {
+        &self.lines.lines[self.lines.inds[&node]]
+    }
+
+    fn line_for_node_mut(&mut self, node: NodeId) -> &mut TreeLine {
+        &mut self.lines.lines[self.lines.inds[&node]]
+    }
+
+    fn focused_line(&self) -> &TreeLine {
+        self.line_for_node(self.focused)
+    }
+
+    fn focused_line_mut(&mut self) -> &mut TreeLine {
+        let f = self.focused;
+        self.line_for_node_mut(f)
+    }
+
+    pub fn toggle_focus_fold(&mut self) {
+        if self.focused_line().folded {
+            self.unfold_focus();
+        } else {
+            self.fold_focus();
+        }
+    }
+
+    fn unfold_focus(&mut self) {
+        let f_ind = self.lines.inds[&self.focused];
+
+        // Set the focus's next's previous to ?
+        // Currently panicks if the following is done:
+        // run on project root
+        // fold resources
+        // fold src
+        // yikes
+
+        let mut ptr = self.focused;
+        while let Some(c) = self.tree[ptr].last_child() {
+            ptr = c;
+        }
+
+        // If the focus's next is in the tree,
+        // set its previous to the new previous
+        let n_ind = self.lines.lines[f_ind].next;
+        if n_ind < self.lines.count {
+            self.lines.lines[n_ind].prev = Some(self.lines.inds[&ptr]);
+        }
+
+        // Set the focus's next to the focus + 1
+        let fl = self.focused_line_mut();
+        fl.folded = false;
+        fl.next = f_ind + 1;
+    }
+
+    fn fold_focus(&mut self) {
+        if let Some(ft) = self.tree[self.focused].data.de.file_type() {
+            if !ft.is_dir() {
+                return;
+            }
+        }
+
+        let mut ptr = Some(self.focused);
+        while let Some(p) = ptr {
+            if let Some(n) = self.tree[p].next_sibling() {
+                ptr = Some(n);
+                break;
+            } else {
+                ptr = self.tree[p].parent();
+            }
+        }
+
+        let new_next = match ptr {
+            Some(nn) => self.lines.inds[&nn],
+            None => self.lines.count,
+        };
+
+        // If the focus's new_next is in the tree,
+        // set its previous to the focus
+        if new_next < self.lines.count {
+            self.lines.lines[new_next].prev = Some(self.lines.inds[&self.focused]);
+        }
+
+        // Set the focus's next to the new_next
+        let fl = self.focused_line_mut();
+        fl.next = new_next;
+        fl.folded = true;
     }
 
     /****** Precomputing drawn lines ******/
@@ -309,25 +415,28 @@ impl Tree {
     ) -> io::Result<()> {
         let line = &self.lines.lines[ind];
         let ending = if last { "" } else { "\r\n" };
+        let fold_mark = if line.folded { "*" } else { "" };
 
         if focus {
             write!(
                 writer,
-                "{}{}{}{}{}{}",
+                "{}{}{}{}{}{}{}",
                 line.prefix,
                 if line.prefix == "" { "" } else { " " },
                 Bg(self.render_opts.bg_color.deref()),
                 self.tree[line.node].data.name,
+                fold_mark,
                 Bg(Reset),
                 ending,
             )
         } else {
             write!(
                 writer,
-                "{}{}{}{}",
+                "{}{}{}{}{}",
                 line.prefix,
                 if line.prefix == "" { "" } else { " " },
                 self.tree[line.node].data.name,
+                fold_mark,
                 if last { "" } else { "\r\n" }
             )
         }?;
@@ -448,5 +557,106 @@ mod tests {
 
         t.focus_up();
         assert_eq!("one_dir", t.focused().name);
+    }
+
+    #[test]
+    fn test_fold() {
+        let mut t = Tree::new_from_dir(&test_dir(""));
+        t.focus_right();
+        t.focus_down();
+        t.toggle_focus_fold();
+
+        let exp = format!(
+            "{}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n{}{} {}\n{}{} {}\n\n{}\n",
+            "resources/test",
+            MID_BRANCH,
+            "link",
+            BAR_INDENT,
+            MID_BRANCH,
+            "dest -> source",
+            BAR_INDENT,
+            END_BRANCH,
+            "source",
+            MID_BRANCH,
+            "one_dir",
+            BAR_INDENT,
+            MID_BRANCH,
+            "mydir*",
+            BAR_INDENT,
+            END_BRANCH,
+            "myotherfile",
+            END_BRANCH,
+            "simple",
+            BLANK_INDENT,
+            MID_BRANCH,
+            "myfile",
+            BLANK_INDENT,
+            END_BRANCH,
+            "myotherfile",
+            "4 directories, 6 files",
+        );
+        let actual = format!("{}", t);
+
+        assert_eq!(exp, actual);
+
+        t.focus_up();
+        t.focus_right();
+        t.toggle_focus_fold();
+
+        let actual = format!("{}", t);
+        let exp_pre = format!(
+            "{}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n\n{}\n",
+            "resources/test",
+            MID_BRANCH,
+            "link",
+            BAR_INDENT,
+            MID_BRANCH,
+            "dest -> source",
+            BAR_INDENT,
+            END_BRANCH,
+            "source",
+            MID_BRANCH,
+            "one_dir",
+            BAR_INDENT,
+            MID_BRANCH,
+            "mydir*",
+            BAR_INDENT,
+            END_BRANCH,
+            "myotherfile",
+            END_BRANCH,
+            "simple*",
+            "4 directories, 6 files",
+        );
+
+        assert_eq!(exp_pre, actual);
+
+        t.focus_left();
+        t.toggle_focus_fold();
+
+        let actual = format!("{}", t);
+        let exp = format!(
+            "{}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n{} {}\n\n{}\n",
+            "resources/test",
+            MID_BRANCH,
+            "link",
+            BAR_INDENT,
+            MID_BRANCH,
+            "dest -> source",
+            BAR_INDENT,
+            END_BRANCH,
+            "source",
+            MID_BRANCH,
+            "one_dir*",
+            END_BRANCH,
+            "simple*",
+            "4 directories, 6 files",
+        );
+
+        assert_eq!(exp, actual);
+
+        t.toggle_focus_fold();
+
+        let actual = format!("{}", t);
+        assert_eq!(exp_pre, actual);
     }
 }

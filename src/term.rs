@@ -56,6 +56,9 @@ pub fn navigate(tree: &mut Tree) {
                 Key::Down | Key::Char('j') => {
                     tree.focus_right();
                 }
+                Key::Char('f') => {
+                    tree.toggle_focus_fold();
+                }
                 Key::Esc | Key::Char('q') | Key::Ctrl('c') => break,
                 _ => {}
             }
