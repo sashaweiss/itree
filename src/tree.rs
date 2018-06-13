@@ -320,6 +320,17 @@ impl Tree {
 
     /****** Rendering and paging ******/
 
+    fn visual_lines_for_line(&self, l_ind: usize, width: usize) -> usize {
+        let line = &self.lines.lines[l_ind];
+        let mut pl = line.prefix.len();
+        if pl != 0 {
+            pl += 1; // If not the root
+        }
+        pl += self.tree[line.node].data.name.len();
+
+        pl / width + 1
+    }
+
     /// Find the bounds of the range of n consecutively renderable lines
     /// around a given line.
     ///
@@ -333,14 +344,16 @@ impl Tree {
     ///
     /// TODO: handle line wrappings (i.e. a given "line" may occupy more than
     /// one visual line).
-    fn bounds_of_range_around_line(&self, line: usize, n: usize) -> (usize, usize) {
+    fn bounds_of_range_around_line(&self, line: usize, n: usize, width: usize) -> (usize, usize) {
         let space = n / 2;
 
         // Roll the start back n/2 spaces. If fewer, save the diff.
         let mut start = line;
         let mut start_diff = 0;
-        for i in 0..space {
+        let mut i = 0;
+        while i < space {
             if let Some(prev) = self.lines.lines[start].prev {
+                i += self.visual_lines_for_line(start, width);
                 start = prev;
             } else {
                 start_diff = space - i;
@@ -352,20 +365,24 @@ impl Tree {
         let mut end = line;
         let mut end_diff = 0;
         let end_max = space + n % 2 + start_diff;
-        for i in 0..end_max {
+        let mut i = 0;
+        while i < end_max {
             let next = self.lines.lines[end].next;
             if let Some(_) = self.lines.lines.get(next) {
+                i += self.visual_lines_for_line(end, width);
                 end = next;
             } else {
-                end += 1; // Range is non-inclusive of end
+                end += 1;
                 end_diff = end_max - i - 1;
                 break;
             }
         }
 
         // Roll the start back at most an additional end_diff spaces.
-        for _ in 0..end_diff {
+        let mut i = 0;
+        while i < end_diff {
             if let Some(prev) = self.lines.lines[start].prev {
+                i += self.visual_lines_for_line(start, width);
                 start = prev;
             } else {
                 break;
@@ -380,9 +397,14 @@ impl Tree {
     /// Lines are considered consecutive if they are adjacent in the
     /// doubly-linked list of lines in which a line's `next` and `prev`
     /// fields comprise the links.
-    pub fn render_around_focus<W: Write>(&self, writer: &mut W, n: usize) -> io::Result<()> {
+    pub fn render_around_focus<W: Write>(
+        &self,
+        writer: &mut W,
+        n: usize,
+        width: usize,
+    ) -> io::Result<()> {
         let y = self.lines.inds[&self.focused];
-        let (mut start, end) = self.bounds_of_range_around_line(y, n);
+        let (mut start, end) = self.bounds_of_range_around_line(y, n, width);
 
         print!("{}", Fg(self.render_opts.fg_color.deref()));
         while start < end {
