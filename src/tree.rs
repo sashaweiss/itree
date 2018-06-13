@@ -385,17 +385,12 @@ impl Tree {
         let (mut start, end) = self.bounds_of_range_around_line(y, n);
 
         print!("{}", Fg(self.render_opts.fg_color.deref()));
-        for i in start..end {
+        while start < end {
             let next = self.lines.lines[start].next;
-            let last = self.lines.lines.get(next).is_none() || i == end - 1;
+            let last = self.lines.lines.get(next).is_none() || next >= end;
 
             self.render_line(writer, start, start == y, last)?;
-
-            if last {
-                break;
-            } else {
-                start = next;
-            }
+            start = next
         }
         print!("{}", Fg(Reset));
 
