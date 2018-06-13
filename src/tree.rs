@@ -70,6 +70,7 @@ pub struct Tree {
     tree: Arena<FsEntry>,
     root: NodeId,
     focused: NodeId,
+    focused_child: HashMap<NodeId, NodeId>,
     lines: TreeLines,
     n_files: usize,
     n_dirs: usize,
@@ -124,6 +125,7 @@ impl Tree {
             },
             tree,
             root,
+            focused_child: HashMap::new(),
             lines,
             n_files,
             n_dirs,
@@ -143,6 +145,7 @@ impl Tree {
                 if p == self.root {
                     self.focused
                 } else {
+                    self.focused_child.insert(p, self.focused);
                     p
                 }
             }
@@ -150,15 +153,18 @@ impl Tree {
     }
 
     pub fn focus_down(&mut self) {
-        self.focused = match self.tree[self.focused].first_child() {
-            None => self.focused,
-            Some(ps) => {
-                if self.focused_line().folded {
-                    self.focused
-                } else {
-                    ps
+        self.focused = match self.focused_child.get(&self.focused) {
+            Some(&c) => c,
+            None => match self.tree[self.focused].first_child() {
+                None => self.focused,
+                Some(ps) => {
+                    if self.focused_line().folded {
+                        self.focused
+                    } else {
+                        ps
+                    }
                 }
-            }
+            },
         };
     }
 
