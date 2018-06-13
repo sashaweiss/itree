@@ -210,13 +210,6 @@ impl Tree {
     fn unfold_focus(&mut self) {
         let f_ind = self.lines.inds[&self.focused];
 
-        // Set the focus's next's previous to ?
-        // Currently panicks if the following is done:
-        // run on project root
-        // fold resources
-        // fold src
-        // yikes
-
         let mut ptr = self.focused;
         while let Some(c) = self.tree[ptr].last_child() {
             ptr = c;
@@ -347,9 +340,6 @@ impl Tree {
     /// The range will include n/2 lines above and n/2 lines below the given line.
     /// If the given line is within n/2 lines of the top or bottom of the tree,
     /// the remaining space will be used on the other side.
-    ///
-    /// TODO: handle line wrappings (i.e. a given "line" may occupy more than
-    /// one visual line).
     fn bounds_of_range_around_line(&self, line: usize, n: usize, width: usize) -> (usize, usize) {
         let space = n / 2;
 
@@ -425,7 +415,7 @@ impl Tree {
         Ok(())
     }
 
-    /// Render a singe line of the tree.
+    /// Render a single line of the tree.
     ///
     /// Uses \r\n as a line ending since when terminal is in raw mode \n
     /// alone does not move the cursor back to the beginning of the line.
