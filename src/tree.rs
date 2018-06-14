@@ -229,10 +229,14 @@ impl Tree {
     }
 
     fn fold_focus(&mut self) {
-        if let Some(ft) = self.tree[self.focused].data.de.file_type() {
-            if !ft.is_dir() {
-                return;
-            }
+        if !self.tree[self.focused]
+            .data
+            .de
+            .file_type()
+            .unwrap()
+            .is_dir()
+        {
+            return;
         }
 
         let mut ptr = Some(self.focused);

@@ -1,15 +1,18 @@
 use std::ffi::OsStr;
 use std::fs::read_link;
+use std::io;
 use std::iter;
+use std::ops::Deref;
 use std::path::Path;
 
 use options::FsOptions;
 
-use ignore::{DirEntry, Walk, WalkBuilder, overrides::OverrideBuilder};
+use ignore::{self, DirEntry, Walk, WalkBuilder, overrides::OverrideBuilder};
 use indextree::{Arena, NodeId};
 
 #[derive(Debug)]
 pub struct FsEntry {
+    pub depth: usize,
     pub de: DirEntry,
     pub name: String,
 }
@@ -66,11 +69,16 @@ fn de_to_fsentry(de: DirEntry) -> FsEntry {
         name.push_str(&dest);
     }
 
-    FsEntry { de, name }
+    FsEntry {
+        depth: de.depth(),
+        de,
+        name,
+    }
 }
 
 fn root_to_fsentry<P: AsRef<Path>>(dir: &P, de: DirEntry) -> FsEntry {
     FsEntry {
+        depth: de.depth(),
         de,
         name: if dir.as_ref() == OsStr::new(".") {
             ".".to_owned()
@@ -84,6 +92,52 @@ fn root_to_fsentry<P: AsRef<Path>>(dir: &P, de: DirEntry) -> FsEntry {
     }
 }
 
+enum DepthChange {
+    NextIsFirst,
+    Isnt,
+    Last(usize),
+}
+
+impl DepthChange {
+    fn for_depths(next: usize, curr: usize) -> Self {
+        if next < curr {
+            DepthChange::Last(curr - next)
+        } else if next > curr {
+            DepthChange::NextIsFirst
+        } else {
+            DepthChange::Isnt
+        }
+    }
+}
+
+fn determine_place_in_tree(walk: &mut iter::Peekable<Walk>, fse: &mut FsEntry) -> DepthChange {
+    match walk.peek() {
+        Some(&Ok(ref next)) => return DepthChange::for_depths(next.depth(), fse.depth),
+        Some(Err(ignore::Error::WithPath { path, err })) => {
+            match err.deref() {
+                ignore::Error::Io(e)
+                    if e.kind() == io::ErrorKind::PermissionDenied && path == fse.de.path() =>
+                {
+                    // A permission-denied error trying to recur into a subdirectory.
+                    // This is fine - it does mean we want to add that information to the current
+                    // FsEntry. See https://github.com/BurntSushi/ripgrep/issue/953.
+                    fse.name.push_str(" [error opening dir]");
+                }
+                e => eprintln!("Error while building FS tree: {:?}", e),
+            }
+        }
+        Some(&Err(ref e)) => {
+            // Not sure what happened here
+            eprintln!("Error iterating FS tree: {:?}", e);
+            return DepthChange::Isnt;
+        }
+        None => return DepthChange::Last(0),
+    };
+
+    walk.next();
+    determine_place_in_tree(walk, fse)
+}
+
 /// Collect an Arena representation of the file system.
 pub fn fs_to_tree<P: AsRef<Path>>(
     dir: &P,
@@ -92,58 +146,42 @@ pub fn fs_to_tree<P: AsRef<Path>>(
     let mut walk = get_walker(dir, &options);
 
     let mut tree = Arena::<FsEntry>::new();
-    let root: NodeId;
-
-    // Get the root node (never a symlink)
-    if let Some(Ok(de)) = walk.next() {
-        root = tree.new_node(root_to_fsentry(dir, de));
+    let root = if let Some(Ok(de)) = walk.next() {
+        tree.new_node(root_to_fsentry(dir, de))
     } else {
         panic!("Failed to get the root!");
-    }
-
-    enum DepthChange {
-        NextIsFirst,
-        Isnt,
-        Last(usize),
-    }
+    };
 
     let mut n_files = 0;
     let mut n_dirs = 0;
     let mut curr = root;
-    while let Some(Ok(de)) = walk.next() {
-        if let Some(ft) = de.file_type() {
-            if ft.is_dir() {
-                n_dirs += 1;
-            } else {
-                n_files += 1;
-            }
-        }
-
-        let te = de_to_fsentry(de);
-
-        match match walk.peek() {
-            Some(&Ok(ref next)) => {
-                let (nd, dd) = (next.depth(), te.de.depth());
-
-                if nd < dd {
-                    DepthChange::Last(dd - nd)
-                } else if nd > dd {
-                    DepthChange::NextIsFirst
-                } else {
-                    DepthChange::Isnt
+    while let Some(res) = walk.next() {
+        let mut fse = match res {
+            Ok(de) => {
+                if let Some(ft) = de.file_type() {
+                    if ft.is_dir() {
+                        n_dirs += 1;
+                    } else {
+                        n_files += 1;
+                    }
                 }
+
+                de_to_fsentry(de)
             }
-            Some(&Err(_)) => continue,
-            None => DepthChange::Last(0),
-        } {
+            Err(_) => {
+                panic!("This error should have been handled in `determine_place_in_tree` during peeking.");
+            }
+        };
+
+        match determine_place_in_tree(&mut walk, &mut fse) {
             DepthChange::NextIsFirst => {
-                curr = add_child_to_tree(&mut tree, curr, te);
+                curr = add_child_to_tree(&mut tree, curr, fse);
             }
             DepthChange::Isnt => {
-                add_child_to_tree(&mut tree, curr, te);
+                add_child_to_tree(&mut tree, curr, fse);
             }
             DepthChange::Last(d) => {
-                add_child_to_tree(&mut tree, curr, te);
+                add_child_to_tree(&mut tree, curr, fse);
                 for _ in 0..d {
                     curr = tree[curr].parent().expect("The node should have a parent");
                 }
