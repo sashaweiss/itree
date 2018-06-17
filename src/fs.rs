@@ -106,26 +106,25 @@ impl DepthChange {
 
 fn determine_place_in_tree(walk: &mut iter::Peekable<Walk>, fse: &mut FsEntry) -> DepthChange {
     match walk.peek() {
-        Some(&Ok(ref next)) => return DepthChange::for_depths(next.depth(), fse.de.depth()),
-        Some(Err(ignore::Error::WithPath { path, err })) => {
-            match err.deref() {
-                ignore::Error::Io(e)
-                    if e.kind() == io::ErrorKind::PermissionDenied && path == fse.de.path() =>
-                {
-                    // A permission-denied error trying to recur into a subdirectory.
-                    // This is fine - it does mean we want to add that information to the current
-                    // FsEntry. See https://github.com/BurntSushi/ripgrep/issue/953.
-                    fse.name.push_str(" [error opening dir]");
+        Some(Ok(next)) => return DepthChange::for_depths(next.depth(), fse.de.depth()),
+        None => return DepthChange::Last(0),
+        Some(Err(e)) => {
+            let mut ok = false;
+            if let ignore::Error::WithPath { path, err } = e {
+                if let ignore::Error::Io(inner) = err.deref() {
+                    ok = inner.kind() == io::ErrorKind::PermissionDenied && path == fse.de.path();
                 }
-                e => eprintln!("Error while building FS tree: {:?}", e),
+            }
+
+            if ok {
+                // A permission-denied error trying to recur into a subdirectory.
+                // This is fine - it does mean we want to add that information to the current
+                // FsEntry. See https://github.com/BurntSushi/ripgrep/issue/953.
+                fse.name.push_str(" [error opening dir]");
+            } else {
+                eprintln!("Error while building FS tree: {:?}", e);
             }
         }
-        Some(&Err(ref e)) => {
-            // Not sure what happened here
-            eprintln!("Error iterating FS tree: {:?}", e);
-            return DepthChange::Isnt;
-        }
-        None => return DepthChange::Last(0),
     };
 
     walk.next();
