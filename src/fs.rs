@@ -12,7 +12,6 @@ use indextree::{Arena, NodeId};
 
 #[derive(Debug)]
 pub struct FsEntry {
-    pub depth: usize,
     pub de: DirEntry,
     pub name: String,
 }
@@ -69,16 +68,11 @@ fn de_to_fsentry(de: DirEntry) -> FsEntry {
         name.push_str(&dest);
     }
 
-    FsEntry {
-        depth: de.depth(),
-        de,
-        name,
-    }
+    FsEntry { de, name }
 }
 
 fn root_to_fsentry<P: AsRef<Path>>(dir: &P, de: DirEntry) -> FsEntry {
     FsEntry {
-        depth: de.depth(),
         de,
         name: if dir.as_ref() == OsStr::new(".") {
             ".".to_owned()
@@ -112,7 +106,7 @@ impl DepthChange {
 
 fn determine_place_in_tree(walk: &mut iter::Peekable<Walk>, fse: &mut FsEntry) -> DepthChange {
     match walk.peek() {
-        Some(&Ok(ref next)) => return DepthChange::for_depths(next.depth(), fse.depth),
+        Some(&Ok(ref next)) => return DepthChange::for_depths(next.depth(), fse.de.depth()),
         Some(Err(ignore::Error::WithPath { path, err })) => {
             match err.deref() {
                 ignore::Error::Io(e)
