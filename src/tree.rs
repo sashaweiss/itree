@@ -7,7 +7,7 @@ use std::{fmt, io};
 use indextree::{Arena, NodeId};
 use termion::color::{Bg, Fg, Reset};
 
-use fs::{fs_to_tree, DirStatus, FsEntry};
+use fs::{fs_to_tree, FileType, FsEntry};
 use options::*;
 
 pub const MID_BRANCH: &str = "├──";
@@ -23,6 +23,12 @@ pub const BAR_INDENT: &str = "│   ";
 
 pub const FOLD_MARK: &str = "*";
 pub const RESTRICTED_MARK: &str = " [error opening dir]";
+pub fn LINK_MARK(dest: &str) -> String {
+    let mut s = String::from(" -> ");
+    s.push_str(dest);
+
+    s
+}
 
 #[derive(Debug)]
 struct TreeLine {
@@ -86,7 +92,7 @@ impl fmt::Display for Tree {
         while let Some(line) = &self.lines.lines.get(l_ind) {
             let suffix = if self.lines.folded.contains(&l_ind) {
                 FOLD_MARK
-            } else if self.tree[line.node].data.ds == DirStatus::IsRestricted {
+            } else if self.tree[line.node].data.ft == FileType::RestrictedDir {
                 RESTRICTED_MARK
             } else {
                 ""
@@ -213,7 +219,7 @@ impl Tree {
     }
 
     pub fn toggle_focus_fold(&mut self) {
-        if self.tree[self.focused].data.ds == DirStatus::Is {
+        if self.tree[self.focused].data.ft == FileType::Dir {
             if self.lines.folded.contains(&self.focused_line_ind()) {
                 self.unfold_focus();
             } else {
@@ -452,12 +458,18 @@ impl Tree {
     ) -> io::Result<()> {
         let line = &self.lines.lines[ind];
         let ending = if last { "" } else { "\r\n" };
-        let suffix = if self.lines.folded.contains(&ind) {
-            FOLD_MARK
-        } else if self.tree[line.node].data.ds == DirStatus::IsRestricted {
-            RESTRICTED_MARK
-        } else {
-            ""
+
+        let suffix = match &self.tree[line.node].data.ft {
+            FileType::File => String::new(),
+            FileType::Dir => {
+                if self.lines.folded.contains(&ind) {
+                    FOLD_MARK.to_owned()
+                } else {
+                    String::new()
+                }
+            }
+            FileType::RestrictedDir => RESTRICTED_MARK.to_owned(),
+            FileType::LinkTo(dest) => LINK_MARK(&dest),
         };
 
         if focus {

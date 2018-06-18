@@ -11,15 +11,16 @@ use ignore::{self, DirEntry, Walk, WalkBuilder, overrides::OverrideBuilder};
 use indextree::{Arena, NodeId};
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum DirStatus {
-    Isnt,
-    Is,
-    IsRestricted,
+pub enum FileType {
+    File,
+    Dir,
+    RestrictedDir,
+    LinkTo(String),
 }
 
 #[derive(Debug)]
 pub struct FsEntry {
-    pub ds: DirStatus,
+    pub ft: FileType,
     pub de: DirEntry,
     pub name: String,
 }
@@ -66,33 +67,25 @@ fn path_to_string<P: AsRef<Path>>(p: &P) -> String {
 
 fn de_to_fsentry(de: DirEntry) -> FsEntry {
     let mut name = path_to_string(&de.path());
-    if de.path_is_symlink() {
+    let ft = if de.path_is_symlink() {
         let dest = match read_link(&de.path()) {
             Ok(d) => path_to_string(&d),
             Err(_) => "<error reading dest>".to_owned(),
         };
 
-        name.push_str(" -> ");
-        name.push_str(&dest);
-    }
+        FileType::LinkTo(dest)
+    } else if de.file_type().expect("Encountered stdin").is_dir() {
+        FileType::Dir
+    } else {
+        FileType::File
+    };
 
-    FsEntry {
-        ds: if de.file_type()
-            .expect("Encountered stdin where not expected")
-            .is_dir()
-        {
-            DirStatus::Is
-        } else {
-            DirStatus::Isnt
-        },
-        de,
-        name,
-    }
+    FsEntry { ft, de, name }
 }
 
 fn root_to_fsentry<P: AsRef<Path>>(dir: &P, de: DirEntry) -> FsEntry {
     FsEntry {
-        ds: DirStatus::Is,
+        ft: FileType::Dir,
         de,
         name: if dir.as_ref() == OsStr::new(".") {
             ".".to_owned()
@@ -140,7 +133,7 @@ fn determine_place_in_tree(walk: &mut iter::Peekable<Walk>, fse: &mut FsEntry) -
                 // A permission-denied error trying to recur into a subdirectory.
                 // This is fine - it does mean we want to add that information to the current
                 // FsEntry. See https://github.com/BurntSushi/ripgrep/issue/953.
-                fse.ds = DirStatus::IsRestricted;
+                fse.ft = FileType::RestrictedDir;
             } else {
                 eprintln!("Error while building FS tree: {:?}", e);
             }
