@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::ops::Deref;
 use std::path::Path;
@@ -7,7 +7,7 @@ use std::{fmt, io};
 use indextree::{Arena, NodeId};
 use termion::color::{Bg, Fg, Reset};
 
-use fs::{fs_to_tree, FsEntry};
+use fs::{fs_to_tree, DirStatus, FsEntry};
 use options::*;
 
 pub const MID_BRANCH: &str = "├──";
@@ -22,6 +22,7 @@ pub const BLANK_INDENT: &str = "    ";
 pub const BAR_INDENT: &str = "│   ";
 
 pub const FOLD_MARK: &str = "*";
+pub const RESTRICTED_MARK: &str = " [error opening dir]";
 
 #[derive(Debug)]
 struct TreeLine {
@@ -29,13 +30,13 @@ struct TreeLine {
     prefix: String,
     prev: Option<usize>,
     next: usize,
-    folded: bool,
 }
 
 #[derive(Debug)]
 struct TreeLines {
     inds: HashMap<NodeId, usize>,
     lines: Vec<TreeLine>,
+    folded: HashSet<usize>,
     count: usize,
 }
 
@@ -44,6 +45,7 @@ impl TreeLines {
         TreeLines {
             inds: HashMap::new(),
             lines: Vec::new(),
+            folded: HashSet::new(),
             count: 0,
         }
     }
@@ -59,7 +61,6 @@ impl TreeLines {
                 Some(self.count - 1)
             },
             next: self.count + 1,
-            folded: false,
         });
         self.count += 1;
     }
@@ -83,12 +84,18 @@ impl fmt::Display for Tree {
 
         let mut l_ind = 1;
         while let Some(line) = &self.lines.lines.get(l_ind) {
+            let suffix = if self.lines.folded.contains(&l_ind) {
+                FOLD_MARK
+            } else if self.tree[line.node].data.ds == DirStatus::IsRestricted {
+                RESTRICTED_MARK
+            } else {
+                ""
+            };
+
             writeln!(
                 f,
                 "{} {}{}",
-                line.prefix,
-                self.tree[line.node].data.name,
-                if line.folded { FOLD_MARK } else { "" },
+                line.prefix, self.tree[line.node].data.name, suffix,
             )?;
 
             l_ind = line.next;
@@ -138,6 +145,29 @@ impl Tree {
         &self.tree[self.focused].data
     }
 
+    #[allow(dead_code)]
+    fn line_for_node(&self, node: NodeId) -> &TreeLine {
+        &self.lines.lines[self.lines.inds[&node]]
+    }
+
+    fn line_for_node_mut(&mut self, node: NodeId) -> &mut TreeLine {
+        &mut self.lines.lines[self.lines.inds[&node]]
+    }
+
+    #[allow(dead_code)]
+    fn focused_line(&self) -> &TreeLine {
+        self.line_for_node(self.focused)
+    }
+
+    fn focused_line_mut(&mut self) -> &mut TreeLine {
+        let f = self.focused;
+        self.line_for_node_mut(f)
+    }
+
+    fn focused_line_ind(&self) -> usize {
+        self.lines.inds[&self.focused]
+    }
+
     pub fn focus_up(&mut self) {
         self.focused = match self.tree[self.focused].parent() {
             None => self.focused,
@@ -158,7 +188,7 @@ impl Tree {
             None => match self.tree[self.focused].first_child() {
                 None => self.focused,
                 Some(ps) => {
-                    if self.focused_line().folded {
+                    if self.lines.folded.contains(&self.focused_line_ind()) {
                         self.focused
                     } else {
                         ps
@@ -182,33 +212,18 @@ impl Tree {
         };
     }
 
-    fn line_for_node(&self, node: NodeId) -> &TreeLine {
-        &self.lines.lines[self.lines.inds[&node]]
-    }
-
-    fn line_for_node_mut(&mut self, node: NodeId) -> &mut TreeLine {
-        &mut self.lines.lines[self.lines.inds[&node]]
-    }
-
-    fn focused_line(&self) -> &TreeLine {
-        self.line_for_node(self.focused)
-    }
-
-    fn focused_line_mut(&mut self) -> &mut TreeLine {
-        let f = self.focused;
-        self.line_for_node_mut(f)
-    }
-
     pub fn toggle_focus_fold(&mut self) {
-        if self.focused_line().folded {
-            self.unfold_focus();
-        } else {
-            self.fold_focus();
+        if self.tree[self.focused].data.ds == DirStatus::Is {
+            if self.lines.folded.contains(&self.focused_line_ind()) {
+                self.unfold_focus();
+            } else {
+                self.fold_focus();
+            }
         }
     }
 
     fn unfold_focus(&mut self) {
-        let f_ind = self.lines.inds[&self.focused];
+        let f_ind = self.focused_line_ind();
 
         let mut ptr = self.focused;
         while let Some(c) = self.tree[ptr].last_child() {
@@ -222,9 +237,11 @@ impl Tree {
             self.lines.lines[n_ind].prev = Some(self.lines.inds[&ptr]);
         }
 
+        // Mark this line as unfolded
+        self.lines.folded.remove(&f_ind);
+
         // Set the focus's next to the focus + 1
         let fl = self.focused_line_mut();
-        fl.folded = false;
         fl.next = f_ind + 1;
     }
 
@@ -260,10 +277,13 @@ impl Tree {
             self.lines.lines[new_next].prev = Some(self.lines.inds[&self.focused]);
         }
 
+        // Mark this line folded
+        let f_ind = self.focused_line_ind();
+        self.lines.folded.insert(f_ind);
+
         // Set the focus's next to the new_next
         let fl = self.focused_line_mut();
         fl.next = new_next;
-        fl.folded = true;
     }
 
     /****** Precomputing drawn lines ******/
@@ -432,7 +452,13 @@ impl Tree {
     ) -> io::Result<()> {
         let line = &self.lines.lines[ind];
         let ending = if last { "" } else { "\r\n" };
-        let fold_mark = if line.folded { "*" } else { "" };
+        let suffix = if self.lines.folded.contains(&ind) {
+            FOLD_MARK
+        } else if self.tree[line.node].data.ds == DirStatus::IsRestricted {
+            RESTRICTED_MARK
+        } else {
+            ""
+        };
 
         if focus {
             write!(
@@ -442,7 +468,7 @@ impl Tree {
                 if line.prefix == "" { "" } else { " " },
                 Bg(self.render_opts.bg_color.deref()),
                 self.tree[line.node].data.name,
-                fold_mark,
+                suffix,
                 Bg(Reset),
                 ending,
             )
@@ -453,7 +479,7 @@ impl Tree {
                 line.prefix,
                 if line.prefix == "" { "" } else { " " },
                 self.tree[line.node].data.name,
-                fold_mark,
+                suffix,
                 if last { "" } else { "\r\n" }
             )
         }?;

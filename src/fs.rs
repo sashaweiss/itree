@@ -10,8 +10,16 @@ use options::FsOptions;
 use ignore::{self, DirEntry, Walk, WalkBuilder, overrides::OverrideBuilder};
 use indextree::{Arena, NodeId};
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum DirStatus {
+    Isnt,
+    Is,
+    IsRestricted,
+}
+
 #[derive(Debug)]
 pub struct FsEntry {
+    pub ds: DirStatus,
     pub de: DirEntry,
     pub name: String,
 }
@@ -68,11 +76,23 @@ fn de_to_fsentry(de: DirEntry) -> FsEntry {
         name.push_str(&dest);
     }
 
-    FsEntry { de, name }
+    FsEntry {
+        ds: if de.file_type()
+            .expect("Encountered stdin where not expected")
+            .is_dir()
+        {
+            DirStatus::Is
+        } else {
+            DirStatus::Isnt
+        },
+        de,
+        name,
+    }
 }
 
 fn root_to_fsentry<P: AsRef<Path>>(dir: &P, de: DirEntry) -> FsEntry {
     FsEntry {
+        ds: DirStatus::Is,
         de,
         name: if dir.as_ref() == OsStr::new(".") {
             ".".to_owned()
@@ -120,7 +140,7 @@ fn determine_place_in_tree(walk: &mut iter::Peekable<Walk>, fse: &mut FsEntry) -
                 // A permission-denied error trying to recur into a subdirectory.
                 // This is fine - it does mean we want to add that information to the current
                 // FsEntry. See https://github.com/BurntSushi/ripgrep/issue/953.
-                fse.name.push_str(" [error opening dir]");
+                fse.ds = DirStatus::IsRestricted;
             } else {
                 eprintln!("Error while building FS tree: {:?}", e);
             }
