@@ -23,12 +23,7 @@ pub const BAR_INDENT: &str = "│   ";
 
 pub const FOLD_MARK: &str = "*";
 pub const RESTRICTED_MARK: &str = " [error opening dir]";
-pub fn LINK_MARK(dest: &str) -> String {
-    let mut s = String::from(" -> ");
-    s.push_str(dest);
-
-    s
-}
+pub const LINK_MARK: &str = " -> ";
 
 #[derive(Debug)]
 struct TreeLine {
@@ -469,7 +464,11 @@ impl Tree {
                 }
             }
             FileType::RestrictedDir => RESTRICTED_MARK.to_owned(),
-            FileType::LinkTo(dest) => LINK_MARK(&dest),
+            FileType::LinkTo(dest) => {
+                let mut s = String::from(LINK_MARK);
+                s.push_str(dest);
+                s
+            }
         };
 
         if focus {

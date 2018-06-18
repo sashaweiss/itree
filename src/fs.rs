@@ -66,7 +66,7 @@ fn path_to_string<P: AsRef<Path>>(p: &P) -> String {
 }
 
 fn de_to_fsentry(de: DirEntry) -> FsEntry {
-    let mut name = path_to_string(&de.path());
+    let name = path_to_string(&de.path());
     let ft = if de.path_is_symlink() {
         let dest = match read_link(&de.path()) {
             Ok(d) => path_to_string(&d),
