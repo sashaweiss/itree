@@ -10,39 +10,49 @@ use std::sync::mpsc::channel;
 use std::thread;
 use std::time::Duration;
 
-fn main() {
-    let (options, no_render) = parse_args();
+enum RenderMethod {
+    JustSummary,
+    NoInteractive,
+    FullInteractive,
+}
 
-    if no_render {
-        tree::Tree::new_with_options(options);
-        return;
-    }
+fn main() {
+    let (options, rm) = parse_args();
 
     let (sx, rx) = channel();
-
     thread::spawn(move || {
         // Only start loading dialog if it takes more than 300ms to build the tree
         if let Err(_) = rx.recv_timeout(Duration::from_millis(300)) {
-            let mut stdout = io::stdout();
+            let mut stderr = io::stderr();
 
-            write!(stdout, "Building tree").unwrap();
-            stdout.flush().unwrap();
+            write!(stderr, "Building tree").unwrap();
+            stderr.flush().unwrap();
             loop {
                 // Print a dot every 1000ms
                 if let Ok(_) = rx.recv_timeout(Duration::from_millis(1000)) {
                     break;
                 }
-                write!(stdout, ".").unwrap();
-                stdout.flush().unwrap();
+                write!(stderr, ".").unwrap();
+                stderr.flush().unwrap();
             }
-            writeln!(stdout, "done!").unwrap();
+            writeln!(stderr, "done!").unwrap();
         }
     });
 
     let mut t = tree::Tree::new_with_options(options);
     sx.send(()).unwrap();
 
-    term::navigate(&mut t);
+    match rm {
+        RenderMethod::JustSummary => {
+            println!("\n{}", t.summary());
+        }
+        RenderMethod::NoInteractive => {
+            print!("{}", t);
+        }
+        RenderMethod::FullInteractive => {
+            term::navigate(&mut t);
+        }
+    }
 }
 
 fn string_to_color(cs: &str) -> Box<color::Color> {
@@ -67,14 +77,23 @@ fn string_to_color(cs: &str) -> Box<color::Color> {
     }
 }
 
-fn parse_args() -> (options::TreeOptions<String>, bool) {
+fn parse_args() -> (options::TreeOptions<String>, RenderMethod) {
     let matches = App::new("itree")
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
         .arg(
+            Arg::with_name("no_interact")
+                .long("no-interact")
+                .help(
+                    "Do not enter interactive mode - just print the tree and summary information.",
+                )
+                .conflicts_with("no_render"),
+        )
+        .arg(
             Arg::with_name("no_render")
                 .long("no-render")
-                .help("Do not display the tree - just build it. Intended for benchmarking"),
+                .help("Do not render the tree - just build it and print summary information.")
+                .conflicts_with("no_interact"),
         )
         .arg(
             Arg::with_name("max_level")
@@ -103,12 +122,12 @@ fn parse_args() -> (options::TreeOptions<String>, bool) {
                 .help("Include hidden files"),
         )
         .arg(
-            Arg::with_name("use_ignore")
+            Arg::with_name("no_ignore")
                 .long("no-ignore")
                 .help("Do not respect `.[git]ignore` files"),
         )
         .arg(
-            Arg::with_name("use_git_exclude")
+            Arg::with_name("no_git_exclude")
                 .long("no-exclude")
                 .help("Do not respect `.git/info/exclude` files"),
         )
@@ -193,8 +212,8 @@ fn parse_args() -> (options::TreeOptions<String>, bool) {
                 .map(|s| s.parse::<u64>().unwrap()),
         )
         .hidden(matches.is_present("hidden"))
-        .use_ignore(matches.is_present("use_ignore"))
-        .use_git_exclude(matches.is_present("use_git_exclude"))
+        .no_ignore(matches.is_present("no_ignore"))
+        .no_git_exclude(matches.is_present("no_git_exclude"))
         .fg_color(string_to_color(
             matches.value_of("fg_color").unwrap_or("white"),
         ))
@@ -212,5 +231,14 @@ fn parse_args() -> (options::TreeOptions<String>, bool) {
         options.root(root.to_owned());
     }
 
-    (options, matches.is_present("no_render"))
+    let rm: RenderMethod;
+    if matches.is_present("no_render") {
+        rm = RenderMethod::JustSummary;
+    } else if matches.is_present("no_interact") {
+        rm = RenderMethod::NoInteractive;
+    } else {
+        rm = RenderMethod::FullInteractive;
+    }
+
+    (options, rm)
 }

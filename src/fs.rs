@@ -27,10 +27,10 @@ fn get_walker<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> iter::Peekable<Wa
         .follow_links(options.follow_links)
         .max_filesize(options.max_filesize)
         .hidden(!options.hidden)
-        .ignore(!options.use_ignore)
-        .git_global(!options.use_ignore)
-        .git_ignore(!options.use_ignore)
-        .git_exclude(!options.use_git_exclude);
+        .ignore(!options.no_ignore)
+        .git_global(!options.no_ignore)
+        .git_ignore(!options.no_ignore)
+        .git_exclude(!options.no_git_exclude);
 
     let mut ovs = OverrideBuilder::new(dir);
     for file in options.custom_ignore.iter() {

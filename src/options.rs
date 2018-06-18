@@ -30,8 +30,8 @@ pub struct FsOptions {
     pub follow_links: bool,
     pub max_filesize: Option<u64>,
     pub hidden: bool,
-    pub use_ignore: bool,
-    pub use_git_exclude: bool,
+    pub no_ignore: bool,
+    pub no_git_exclude: bool,
     pub custom_ignore: Vec<String>,
 }
 
@@ -49,8 +49,8 @@ impl FsOptions {
             follow_links: false,
             max_filesize: None,
             hidden: true,
-            use_ignore: true,
-            use_git_exclude: true,
+            no_ignore: true,
+            no_git_exclude: true,
             custom_ignore: Vec::new(),
         }
     }
@@ -113,16 +113,16 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     /// Set whether or not to read `.[git]ignore` files.
     ///
     /// Enabled by default.
-    pub fn use_ignore(&mut self, use_ignore: bool) -> &mut Self {
-        self.fs_opts.use_ignore = use_ignore;
+    pub fn no_ignore(&mut self, no_ignore: bool) -> &mut Self {
+        self.fs_opts.no_ignore = no_ignore;
         self
     }
 
     /// Set whether or not to read `.git/info/exclude` files.
     ///
     /// Enabled by default.
-    pub fn use_git_exclude(&mut self, use_git_exclude: bool) -> &mut Self {
-        self.fs_opts.use_git_exclude = use_git_exclude;
+    pub fn no_git_exclude(&mut self, no_git_exclude: bool) -> &mut Self {
+        self.fs_opts.no_git_exclude = no_git_exclude;
         self
     }
 
