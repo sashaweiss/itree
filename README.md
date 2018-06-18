@@ -49,16 +49,17 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 ## My to-do list
 
 ### High priority
-* Figure out bug 2) - this cripples its use from above-$HOME directories, and makes benchmarking invalid
-* Benchmark running from `~`, vs. `tree` and `rg --files`
-* Write more comprehensive documentation of source code
+* Benchmark running from `~`, vs. `tree` and `rg --files`.
+* Write more comprehensive documentation of source code.
+* Figure out why `tree` and `itree` sometimes differ on whether an entry is a file or directory.
 
 ### Medium priority
-* Implement optional information displays that `tree` offers, e.g. `tree -h`
-* Add commands for interacting with files under the cursor
-* Add command for `cd`-ing to the folder the cursor is currently in
-* Figure out why `parse_args` panics when given stdin input
+* [INTERNALS] Implement `Iterator` for the `TreeLines` struct, since it's a bit opaque how to iterate potentially folded lines.
+* Implement functionality similar to `tree -h`.
+* Implement functionality similar to `tree -d`.
+* Add commands for interacting with files under the cursor.
+* Add command for `cd`-ing to the folder the cursor is currently in.
+* Figure out why `parse_args` panics when given stdin input.
 
 ### Known bugs (need more research)
 1) Sometimes (no pattern identifiable yet) it acts as if the terminal window were 4-5 lines shorter than it is, and leaves a blank space at the bottom of the screen.
-2) When run from a root that contains folders that may have restricted permissions (e.g. `/`), not all subdirectories that I expected appear.
