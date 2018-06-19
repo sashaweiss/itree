@@ -3,7 +3,7 @@ extern crate itree;
 
 use clap::{App, Arg};
 
-use itree::{color, options, term, tree};
+use itree::{color, options, render, term, tree};
 
 use std::io::{self, Write};
 use std::sync::mpsc::channel;
@@ -20,16 +20,17 @@ fn main() {
     let (fs_opts, rd_opts, rm) = parse_args();
 
     let mut t = build_tree_loading(fs_opts);
+    let mut render = render::TreeRender::new(&mut t, rd_opts);
 
     match rm {
         RenderMethod::JustSummary => {
-            println!("\n{}", t.summary());
+            println!("\n{}", render.tree.summary());
         }
         RenderMethod::NoInteractive => {
-            print!("{}", t);
+            print!("{}", render);
         }
         RenderMethod::FullInteractive => {
-            term::navigate(&mut t, rd_opts);
+            term::navigate(&mut render);
         }
     }
 }

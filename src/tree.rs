@@ -6,21 +6,18 @@ use indextree::{Arena, NodeId};
 use fs::{fs_to_tree, FileType, FsEntry};
 use options::*;
 
-pub const MID_BRANCH: &str = "├──";
-pub const END_BRANCH: &str = "└──";
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum Indent {
-    Bar,
-    Blank,
+pub enum PrefixPiece {
+    BarIndent,
+    BlankIndent,
+    MidBranch,
+    EndBranch,
 }
-pub const BLANK_INDENT: &str = "    ";
-pub const BAR_INDENT: &str = "│   ";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeLine {
     pub(crate) node: NodeId,
-    pub(crate) prefix: String,
+    pub(crate) prefix: Vec<PrefixPiece>,
     pub(crate) prev: Option<usize>,
     pub(crate) next: usize,
 }
@@ -43,7 +40,7 @@ impl TreeLines {
         }
     }
 
-    fn add(&mut self, node: NodeId, prefix: String) {
+    fn add(&mut self, node: NodeId, prefix: Vec<PrefixPiece>) {
         self.inds.insert(node, self.count);
         self.lines.push(TreeLine {
             node,
@@ -256,7 +253,7 @@ impl Tree {
         let mut tree_lines = TreeLines::new();
 
         // Draw the root
-        tree_lines.add(root, String::new());
+        tree_lines.add(root, Vec::new());
 
         // Draw the rest of the tree
         Tree::draw_from(&mut tree_lines, &tree, root, &mut vec![]);
@@ -268,238 +265,28 @@ impl Tree {
         tree_lines: &mut TreeLines,
         tree: &Arena<FsEntry>,
         root: NodeId,
-        indents: &mut Vec<Indent>,
+        indents: &mut Vec<PrefixPiece>,
     ) {
         for child in root.children(&tree) {
             let last = Some(child) == tree[root].last_child();
 
-            let mut prefix = String::new();
-            for i in indents.iter() {
-                prefix.push_str(match *i {
-                    Indent::Bar => BAR_INDENT,
-                    Indent::Blank => BLANK_INDENT,
-                });
-            }
-            prefix.push_str(if last { END_BRANCH } else { MID_BRANCH });
+            let mut prefix = indents.clone();
+            prefix.push(if last {
+                PrefixPiece::EndBranch
+            } else {
+                PrefixPiece::MidBranch
+            });
 
             tree_lines.add(child, prefix);
 
-            indents.push(if last { Indent::Blank } else { Indent::Bar });
+            indents.push(if last {
+                PrefixPiece::BlankIndent
+            } else {
+                PrefixPiece::BarIndent
+            });
             Tree::draw_from(tree_lines, tree, child, indents);
         }
 
         indents.pop();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use std::path::PathBuf;
-
-    fn test_dir(dir: &str) -> PathBuf {
-        PathBuf::new().join("resources/test").join(dir)
-    }
-
-    fn abs_test_dir(dir: &str) -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(test_dir(dir))
-    }
-
-    fn draw_to_string(dir: &PathBuf) -> String {
-        format!("{}", Tree::new_from_dir(dir))
-    }
-
-    #[test]
-    fn test_draw_abs_path() {
-        let dir = abs_test_dir("simple");
-
-        let exp = format!(
-            "{}\n{} {}\n{} {}\n\n{}\n",
-            dir.display(),
-            MID_BRANCH,
-            "myfile",
-            END_BRANCH,
-            "myotherfile",
-            "0 directories, 2 files",
-        );
-
-        assert_eq!(exp, draw_to_string(&dir));
-    }
-
-    #[test]
-    fn test_draw_rel_path() {
-        let dir = test_dir("simple");
-
-        let exp = format!(
-            "{}\n{} {}\n{} {}\n\n{}\n",
-            dir.display(),
-            MID_BRANCH,
-            "myfile",
-            END_BRANCH,
-            "myotherfile",
-            "0 directories, 2 files",
-        );
-
-        assert_eq!(exp, draw_to_string(&dir));
-    }
-
-    #[test]
-    fn test_draw_dir() {
-        let dir = test_dir("one_dir");
-
-        let exp = format!(
-            "{}\n{} {}\n{}{} {}\n{} {}\n\n{}\n",
-            dir.display(),
-            MID_BRANCH,
-            "mydir",
-            BAR_INDENT,
-            END_BRANCH,
-            "myfile",
-            END_BRANCH,
-            "myotherfile",
-            "1 directory, 2 files",
-        );
-
-        assert_eq!(exp, draw_to_string(&dir));
-    }
-
-    #[test]
-    fn test_draw_link() {
-        let dir = test_dir("link");
-
-        let exp = format!(
-            "{}\n{} {}\n{} {}\n\n{}\n",
-            dir.display(),
-            MID_BRANCH,
-            "dest -> source",
-            END_BRANCH,
-            "source",
-            "0 directories, 2 files",
-        );
-
-        assert_eq!(exp, draw_to_string(&dir));
-    }
-
-    #[test]
-    fn test_focus() {
-        let mut t = Tree::new_from_dir(&test_dir(""));
-        assert_eq!("link", t.focused().name);
-        t.focus_up();
-        assert_eq!("link", t.focused().name);
-
-        t.focus_right();
-        assert_eq!("one_dir", t.focused().name);
-        t.focus_down();
-        assert_eq!("mydir", t.focused().name);
-
-        t.focus_left();
-        assert_eq!("mydir", t.focused().name);
-        t.focus_right();
-        assert_eq!("myotherfile", t.focused().name);
-
-        t.focus_up();
-        assert_eq!("one_dir", t.focused().name);
-    }
-
-    #[test]
-    fn test_fold() {
-        let mut t = Tree::new_from_dir(&test_dir(""));
-        t.focus_right();
-        t.focus_down();
-        t.toggle_focus_fold();
-
-        let exp = format!(
-            "{}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n{}{} {}\n{}{} {}\n\n{}\n",
-            "resources/test",
-            MID_BRANCH,
-            "link",
-            BAR_INDENT,
-            MID_BRANCH,
-            "dest -> source",
-            BAR_INDENT,
-            END_BRANCH,
-            "source",
-            MID_BRANCH,
-            "one_dir",
-            BAR_INDENT,
-            MID_BRANCH,
-            "mydir*",
-            BAR_INDENT,
-            END_BRANCH,
-            "myotherfile",
-            END_BRANCH,
-            "simple",
-            BLANK_INDENT,
-            MID_BRANCH,
-            "myfile",
-            BLANK_INDENT,
-            END_BRANCH,
-            "myotherfile",
-            "4 directories, 6 files",
-        );
-        let actual = format!("{}", t);
-
-        assert_eq!(exp, actual);
-
-        t.focus_up();
-        t.focus_right();
-        t.toggle_focus_fold();
-
-        let actual = format!("{}", t);
-        let exp_pre = format!(
-            "{}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n\n{}\n",
-            "resources/test",
-            MID_BRANCH,
-            "link",
-            BAR_INDENT,
-            MID_BRANCH,
-            "dest -> source",
-            BAR_INDENT,
-            END_BRANCH,
-            "source",
-            MID_BRANCH,
-            "one_dir",
-            BAR_INDENT,
-            MID_BRANCH,
-            "mydir*",
-            BAR_INDENT,
-            END_BRANCH,
-            "myotherfile",
-            END_BRANCH,
-            "simple*",
-            "4 directories, 6 files",
-        );
-
-        assert_eq!(exp_pre, actual);
-
-        t.focus_left();
-        t.toggle_focus_fold();
-
-        let actual = format!("{}", t);
-        let exp = format!(
-            "{}\n{} {}\n{}{} {}\n{}{} {}\n{} {}\n{} {}\n\n{}\n",
-            "resources/test",
-            MID_BRANCH,
-            "link",
-            BAR_INDENT,
-            MID_BRANCH,
-            "dest -> source",
-            BAR_INDENT,
-            END_BRANCH,
-            "source",
-            MID_BRANCH,
-            "one_dir*",
-            END_BRANCH,
-            "simple*",
-            "4 directories, 6 files",
-        );
-
-        assert_eq!(exp, actual);
-
-        t.toggle_focus_fold();
-
-        let actual = format!("{}", t);
-        assert_eq!(exp_pre, actual);
     }
 }

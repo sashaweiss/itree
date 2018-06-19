@@ -26,15 +26,13 @@ fn render_to_stdout(render: &TreeRender) -> io::Result<()> {
     render.render_around_focus(&mut stdout, y as usize, x as usize)
 }
 
-pub fn navigate(tree: &mut Tree, opts: RenderOptions) {
+pub fn navigate(render: &mut TreeRender) {
     {
         // The following is necessary to properly read from stdin.
         // For details, see: https://github.com/ticki/termion/issues/42
         //
         // Wrapped in block so clenaup printing happens in non-raw mode.
         let _stdout = io::stdout().into_raw_mode().unwrap();
-
-        let mut render = TreeRender::new(tree, opts);
 
         println!("{}", ToAlternateScreen);
         println!("{}", Hide);
@@ -80,5 +78,5 @@ pub fn navigate(tree: &mut Tree, opts: RenderOptions) {
     println!("{}", Show);
     println!("{}", ToMainScreen);
 
-    println!("{}", tree.summary());
+    println!("{}", render.tree.summary());
 }
