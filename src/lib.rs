@@ -4,6 +4,7 @@ extern crate termion;
 
 mod fs;
 pub mod options;
+pub mod render;
 pub mod term;
 pub mod tree;
 

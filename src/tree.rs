@@ -1,11 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use std::io::Write;
-use std::ops::Deref;
 use std::path::Path;
-use std::{fmt, io};
 
 use indextree::{Arena, NodeId};
-use termion::color::{Bg, Fg, Reset};
 
 use fs::{fs_to_tree, FileType, FsEntry};
 use options::*;
@@ -13,7 +9,7 @@ use options::*;
 pub const MID_BRANCH: &str = "├──";
 pub const END_BRANCH: &str = "└──";
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum Indent {
     Bar,
     Blank,
@@ -21,24 +17,20 @@ enum Indent {
 pub const BLANK_INDENT: &str = "    ";
 pub const BAR_INDENT: &str = "│   ";
 
-pub const FOLD_MARK: &str = "*";
-pub const RESTRICTED_MARK: &str = " [error opening dir]";
-pub const LINK_MARK: &str = " -> ";
-
-#[derive(Debug)]
-struct TreeLine {
-    node: NodeId,
-    prefix: String,
-    prev: Option<usize>,
-    next: usize,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeLine {
+    pub(crate) node: NodeId,
+    pub(crate) prefix: String,
+    pub(crate) prev: Option<usize>,
+    pub(crate) next: usize,
 }
 
-#[derive(Debug)]
-struct TreeLines {
-    inds: HashMap<NodeId, usize>,
-    lines: Vec<TreeLine>,
-    folded: HashSet<usize>,
-    count: usize,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeLines {
+    pub(crate) inds: HashMap<NodeId, usize>,
+    pub(crate) lines: Vec<TreeLine>,
+    pub(crate) folded: HashSet<usize>,
+    pub(crate) count: usize,
 }
 
 impl TreeLines {
@@ -69,59 +61,29 @@ impl TreeLines {
 
 #[derive(Debug)]
 pub struct Tree {
-    tree: Arena<FsEntry>,
-    root: NodeId,
-    focused: NodeId,
-    focused_child: HashMap<NodeId, NodeId>,
-    lines: TreeLines,
-    n_files: usize,
-    n_dirs: usize,
-    pub(crate) render_opts: RenderOptions,
-}
-
-impl fmt::Display for Tree {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}", self.tree[self.root].data.name)?;
-
-        let mut l_ind = 1;
-        while let Some(line) = &self.lines.lines.get(l_ind) {
-            let suffix = if self.lines.folded.contains(&l_ind) {
-                FOLD_MARK
-            } else if self.tree[line.node].data.ft == FileType::RestrictedDir {
-                RESTRICTED_MARK
-            } else {
-                ""
-            };
-
-            writeln!(
-                f,
-                "{} {}{}",
-                line.prefix, self.tree[line.node].data.name, suffix,
-            )?;
-
-            l_ind = line.next;
-        }
-
-        writeln!(f, "\n{}", self.summary())?;
-
-        Ok(())
-    }
+    pub(crate) tree: Arena<FsEntry>,
+    pub(crate) root: NodeId,
+    pub(crate) focused: NodeId,
+    pub(crate) focused_child: HashMap<NodeId, NodeId>,
+    pub(crate) lines: TreeLines,
+    pub(crate) n_files: usize,
+    pub(crate) n_dirs: usize,
 }
 
 impl Tree {
     #[allow(dead_code)]
     pub fn new() -> Self {
-        Tree::new_with_options(TreeOptions::new("."))
+        Tree::new_with_options(FsOptions::new("."))
     }
 
     #[allow(dead_code)]
     pub fn new_from_dir<P: AsRef<Path>>(dir: &P) -> Self {
-        let opt = TreeOptions::new(dir);
+        let opt = FsOptions::new(dir);
         Tree::new_with_options(opt)
     }
 
-    pub fn new_with_options<P: AsRef<Path>>(options: TreeOptions<P>) -> Self {
-        let (tree, root, n_files, n_dirs) = fs_to_tree(&options.root, &options.fs_opts);
+    pub fn new_with_options<P: AsRef<Path>>(options: FsOptions<P>) -> Self {
+        let (tree, root, n_files, n_dirs) = fs_to_tree(&options);
 
         let lines = Tree::draw(&tree, root);
 
@@ -137,27 +99,16 @@ impl Tree {
             lines,
             n_files,
             n_dirs,
-            render_opts: options.render_opts,
         }
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn focused<'a>(&'a self) -> &'a FsEntry {
         &self.tree[self.focused].data
     }
 
-    #[allow(dead_code)]
-    fn line_for_node(&self, node: NodeId) -> &TreeLine {
-        &self.lines.lines[self.lines.inds[&node]]
-    }
-
     fn line_for_node_mut(&mut self, node: NodeId) -> &mut TreeLine {
         &mut self.lines.lines[self.lines.inds[&node]]
-    }
-
-    #[allow(dead_code)]
-    fn focused_line(&self) -> &TreeLine {
-        self.line_for_node(self.focused)
     }
 
     fn focused_line_mut(&mut self) -> &mut TreeLine {
@@ -287,8 +238,6 @@ impl Tree {
         fl.next = new_next;
     }
 
-    /****** Precomputing drawn lines ******/
-
     pub fn summary(&self) -> String {
         format!(
             "{} {}, {} {}",
@@ -340,166 +289,6 @@ impl Tree {
         }
 
         indents.pop();
-    }
-
-    /****** Rendering and paging ******/
-
-    fn visual_lines_for_line(&self, l_ind: usize, width: usize) -> usize {
-        let line = &self.lines.lines[l_ind];
-        let mut pl = line.prefix.len();
-        if pl != 0 {
-            pl += 1; // If not the root
-        }
-        pl += self.tree[line.node].data.name.len();
-
-        pl / width + 1
-    }
-
-    /// Find the bounds of the range of n consecutively renderable lines
-    /// around a given line.
-    ///
-    /// Lines are considered consecutive if they follow each other in the
-    /// doubly-linked list in which a line's `next` and `prev` fields comprise
-    /// the edges.
-    ///
-    /// The range will include n/2 lines above and n/2 lines below the given line.
-    /// If the given line is within n/2 lines of the top or bottom of the tree,
-    /// the remaining space will be used on the other side.
-    fn bounds_of_range_around_line(&self, line: usize, n: usize, width: usize) -> (usize, usize) {
-        let space = n / 2;
-
-        // Roll the start back n/2 spaces. If fewer, save the diff.
-        let mut start = line;
-        let mut start_diff = 0;
-        let mut i = 0;
-        while i < space {
-            if let Some(prev) = self.lines.lines[start].prev {
-                i += self.visual_lines_for_line(start, width);
-                start = prev;
-            } else {
-                start_diff = space - i;
-                break;
-            }
-        }
-
-        // Roll the end forward n/2 + start_diff spaces. If fewer, save the diff.
-        let mut end = line;
-        let mut end_diff = 0;
-        let end_max = space + n % 2 + start_diff;
-        let mut i = 0;
-        while i < end_max {
-            let next = self.lines.lines[end].next;
-            if let Some(_) = self.lines.lines.get(next) {
-                i += self.visual_lines_for_line(end, width);
-                end = next;
-            } else {
-                end += 1;
-                end_diff = end_max - i - 1;
-                break;
-            }
-        }
-
-        // Roll the start back at most an additional end_diff spaces.
-        let mut i = 0;
-        while i < end_diff {
-            if let Some(prev) = self.lines.lines[start].prev {
-                i += self.visual_lines_for_line(start, width);
-                start = prev;
-            } else {
-                break;
-            }
-        }
-
-        (start, end)
-    }
-
-    /// Render at most n consecutive lines of the tree around the focused node.
-    ///
-    /// Lines are considered consecutive if they are adjacent in the
-    /// doubly-linked list of lines in which a line's `next` and `prev`
-    /// fields comprise the links.
-    pub fn render_around_focus<W: Write>(
-        &self,
-        writer: &mut W,
-        n: usize,
-        width: usize,
-    ) -> io::Result<()> {
-        let y = self.lines.inds[&self.focused];
-        let (mut start, end) = self.bounds_of_range_around_line(y, n, width);
-
-        print!("{}", Fg(self.render_opts.fg_color.deref()));
-        while start < end {
-            let next = self.lines.lines[start].next;
-            let last = self.lines.lines.get(next).is_none() || next >= end;
-
-            self.render_line(writer, start, start == y, last)?;
-            start = next
-        }
-        print!("{}", Fg(Reset));
-
-        Ok(())
-    }
-
-    /// Render a single line of the tree.
-    ///
-    /// Uses \r\n as a line ending since when terminal is in raw mode \n
-    /// alone does not move the cursor back to the beginning of the line.
-    fn render_line<W: Write>(
-        &self,
-        writer: &mut W,
-        ind: usize,
-        focus: bool,
-        last: bool,
-    ) -> io::Result<()> {
-        let line = &self.lines.lines[ind];
-        let ending = if last { "" } else { "\r\n" };
-
-        let suffix = match &self.tree[line.node].data.ft {
-            FileType::File => String::new(),
-            FileType::Dir => {
-                if self.lines.folded.contains(&ind) {
-                    FOLD_MARK.to_owned()
-                } else {
-                    String::new()
-                }
-            }
-            FileType::RestrictedDir => RESTRICTED_MARK.to_owned(),
-            FileType::LinkTo(dest) => {
-                let mut s = String::from(LINK_MARK);
-                s.push_str(dest);
-                s
-            }
-        };
-
-        if focus {
-            write!(
-                writer,
-                "{}{}{}{}{}{}{}",
-                line.prefix,
-                if line.prefix == "" { "" } else { " " },
-                Bg(self.render_opts.bg_color.deref()),
-                self.tree[line.node].data.name,
-                suffix,
-                Bg(Reset),
-                ending,
-            )
-        } else {
-            write!(
-                writer,
-                "{}{}{}{}{}",
-                line.prefix,
-                if line.prefix == "" { "" } else { " " },
-                self.tree[line.node].data.name,
-                suffix,
-                if last { "" } else { "\r\n" }
-            )
-        }?;
-
-        if last {
-            writer.flush()
-        } else {
-            Ok(())
-        }
     }
 }
 

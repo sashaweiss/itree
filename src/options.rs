@@ -22,17 +22,16 @@ impl RenderOptions {
             bg_color: Box::new(color::Blue),
         }
     }
-}
 
-#[derive(Debug)]
-pub struct FsOptions {
-    pub max_depth: Option<usize>,
-    pub follow_links: bool,
-    pub max_filesize: Option<u64>,
-    pub hidden: bool,
-    pub no_ignore: bool,
-    pub no_git_exclude: bool,
-    pub custom_ignore: Vec<String>,
+    pub fn fg_color(&mut self, color: Box<Color>) -> &mut Self {
+        self.fg_color = color;
+        self
+    }
+
+    pub fn bg_color(&mut self, color: Box<Color>) -> &mut Self {
+        self.bg_color = color;
+        self
+    }
 }
 
 pub fn validate_ignore(pat: &str) -> Result<(), String> {
@@ -42,9 +41,22 @@ pub fn validate_ignore(pat: &str) -> Result<(), String> {
         .map_err(|e| format!("Error parsing ignore: {:?}", e))
 }
 
-impl FsOptions {
-    pub fn new() -> Self {
+#[derive(Debug)]
+pub struct FsOptions<P: AsRef<Path>> {
+    pub root: P,
+    pub max_depth: Option<usize>,
+    pub follow_links: bool,
+    pub max_filesize: Option<u64>,
+    pub hidden: bool,
+    pub no_ignore: bool,
+    pub no_git_exclude: bool,
+    pub custom_ignore: Vec<String>,
+}
+
+impl<P: AsRef<Path>> FsOptions<P> {
+    pub fn new(root: P) -> Self {
         Self {
+            root,
             max_depth: None,
             follow_links: false,
             max_filesize: None,
@@ -52,23 +64,6 @@ impl FsOptions {
             no_ignore: true,
             no_git_exclude: true,
             custom_ignore: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct TreeOptions<P: AsRef<Path>> {
-    pub(crate) root: P,
-    pub(crate) fs_opts: FsOptions,
-    pub(crate) render_opts: RenderOptions,
-}
-
-impl<P: AsRef<Path>> TreeOptions<P> {
-    pub fn new(root: P) -> Self {
-        Self {
-            root,
-            fs_opts: FsOptions::new(),
-            render_opts: RenderOptions::new(),
         }
     }
 
@@ -82,7 +77,7 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     ///
     /// `None` by default.
     pub fn max_depth(&mut self, max_depth: Option<usize>) -> &mut Self {
-        self.fs_opts.max_depth = max_depth;
+        self.max_depth = max_depth;
         self
     }
 
@@ -90,7 +85,7 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     ///
     /// Disabled by default.
     pub fn follow_links(&mut self, follow_links: bool) -> &mut Self {
-        self.fs_opts.follow_links = follow_links;
+        self.follow_links = follow_links;
         self
     }
 
@@ -98,7 +93,7 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     ///
     /// `None` by default.
     pub fn max_filesize(&mut self, max_filesize: Option<u64>) -> &mut Self {
-        self.fs_opts.max_filesize = max_filesize;
+        self.max_filesize = max_filesize;
         self
     }
 
@@ -106,7 +101,7 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     ///
     /// Enabled by default.
     pub fn hidden(&mut self, hidden: bool) -> &mut Self {
-        self.fs_opts.hidden = hidden;
+        self.hidden = hidden;
         self
     }
 
@@ -114,7 +109,7 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     ///
     /// Enabled by default.
     pub fn no_ignore(&mut self, no_ignore: bool) -> &mut Self {
-        self.fs_opts.no_ignore = no_ignore;
+        self.no_ignore = no_ignore;
         self
     }
 
@@ -122,23 +117,13 @@ impl<P: AsRef<Path>> TreeOptions<P> {
     ///
     /// Enabled by default.
     pub fn no_git_exclude(&mut self, no_git_exclude: bool) -> &mut Self {
-        self.fs_opts.no_git_exclude = no_git_exclude;
+        self.no_git_exclude = no_git_exclude;
         self
     }
 
     /// Add a custom ignore path.
     pub fn add_custom_ignore(&mut self, path: &str) -> &mut Self {
-        self.fs_opts.custom_ignore.push(path.to_owned());
-        self
-    }
-
-    pub fn fg_color(&mut self, color: Box<Color>) -> &mut Self {
-        self.render_opts.fg_color = color;
-        self
-    }
-
-    pub fn bg_color(&mut self, color: Box<Color>) -> &mut Self {
-        self.render_opts.bg_color = color;
+        self.custom_ignore.push(path.to_owned());
         self
     }
 }

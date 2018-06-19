@@ -8,6 +8,8 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::{ToAlternateScreen, ToMainScreen};
 
+use options::RenderOptions;
+use render::TreeRender;
 use tree::Tree;
 
 fn clear() {
@@ -15,15 +17,16 @@ fn clear() {
     print!("{}", Goto(1, 1));
 }
 
-fn render_to_stdout(tree: &Tree) -> io::Result<()> {
+fn render_to_stdout(render: &TreeRender) -> io::Result<()> {
     let mut stdout = io::stdout();
 
     clear();
     let (x, y) = termion::terminal_size()?;
-    tree.render_around_focus(&mut stdout, y as usize, x as usize)
+
+    render.render_around_focus(&mut stdout, y as usize, x as usize)
 }
 
-pub fn navigate(tree: &mut Tree) {
+pub fn navigate(tree: &mut Tree, opts: RenderOptions) {
     {
         // The following is necessary to properly read from stdin.
         // For details, see: https://github.com/ticki/termion/issues/42
@@ -31,10 +34,12 @@ pub fn navigate(tree: &mut Tree) {
         // Wrapped in block so clenaup printing happens in non-raw mode.
         let _stdout = io::stdout().into_raw_mode().unwrap();
 
+        let mut render = TreeRender::new(tree, opts);
+
         println!("{}", ToAlternateScreen);
         println!("{}", Hide);
 
-        render_to_stdout(tree)
+        render_to_stdout(&render)
             .map_err(|e| {
                 println!("{}", Show);
                 format!("Failed to render tree: {:?}", e)
@@ -45,25 +50,25 @@ pub fn navigate(tree: &mut Tree) {
         while let Some(Ok(key)) = keys.next() {
             match key {
                 Key::Left | Key::Char('h') => {
-                    tree.focus_up();
+                    render.focus_up();
                 }
                 Key::Right | Key::Char('l') => {
-                    tree.focus_down();
+                    render.focus_down();
                 }
                 Key::Up | Key::Char('k') => {
-                    tree.focus_left();
+                    render.focus_left();
                 }
                 Key::Down | Key::Char('j') => {
-                    tree.focus_right();
+                    render.focus_right();
                 }
                 Key::Char('f') => {
-                    tree.toggle_focus_fold();
+                    render.toggle_focus_fold();
                 }
                 Key::Esc | Key::Char('q') | Key::Ctrl('c') => break,
                 _ => {}
             }
 
-            render_to_stdout(tree)
+            render_to_stdout(&render)
                 .map_err(|e| {
                     println!("{}", Show);
                     format!("Failed to render tree: {:?}", e)

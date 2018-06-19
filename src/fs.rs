@@ -26,8 +26,8 @@ pub struct FsEntry {
 }
 
 /// Create an iterator over the FS, rooted at dir.
-fn get_walker<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> iter::Peekable<Walk> {
-    let mut builder = WalkBuilder::new(&dir);
+fn get_walker<P: AsRef<Path>>(options: &FsOptions<P>) -> iter::Peekable<Walk> {
+    let mut builder = WalkBuilder::new(&options.root);
 
     builder
         .parents(false)
@@ -41,7 +41,7 @@ fn get_walker<P: AsRef<Path>>(dir: &P, options: &FsOptions) -> iter::Peekable<Wa
         .git_ignore(!options.no_ignore)
         .git_exclude(!options.no_git_exclude);
 
-    let mut ovs = OverrideBuilder::new(dir);
+    let mut ovs = OverrideBuilder::new(&options.root);
     for file in options.custom_ignore.iter() {
         ovs.add(&file).unwrap();
     }
@@ -131,8 +131,8 @@ fn determine_place_in_tree(walk: &mut iter::Peekable<Walk>, fse: &mut FsEntry) -
 
             if ok {
                 // A permission-denied error trying to recur into a subdirectory.
-                // This is fine - it does mean we want to add that information to the current
-                // FsEntry. See https://github.com/BurntSushi/ripgrep/issue/953.
+                // This is fine, but we want to keep track of it.
+                // See https://github.com/BurntSushi/ripgrep/issue/953.
                 fse.ft = FileType::RestrictedDir;
             } else {
                 eprintln!("Error while building FS tree: {:?}", e);
@@ -145,15 +145,17 @@ fn determine_place_in_tree(walk: &mut iter::Peekable<Walk>, fse: &mut FsEntry) -
 }
 
 /// Collect an Arena representation of the file system.
+///
+/// Returns an Arena-tree, its root, and the number of files
+/// and directories in it.
 pub fn fs_to_tree<P: AsRef<Path>>(
-    dir: &P,
-    options: &FsOptions,
+    options: &FsOptions<P>,
 ) -> (Arena<FsEntry>, NodeId, usize, usize) {
-    let mut walk = get_walker(dir, &options);
+    let mut walk = get_walker(&options);
 
     let mut tree = Arena::<FsEntry>::new();
     let root = if let Some(Ok(de)) = walk.next() {
-        tree.new_node(root_to_fsentry(dir, de))
+        tree.new_node(root_to_fsentry(&options.root, de))
     } else {
         panic!("Failed to get the root!");
     };
@@ -175,7 +177,7 @@ pub fn fs_to_tree<P: AsRef<Path>>(
                 de_to_fsentry(de)
             }
             Err(_) => {
-                panic!("This error should have been handled in `determine_place_in_tree` during peeking.");
+                panic!("This error should have been handled in `determine_place_in_tree` in the previous iteration.");
             }
         };
 
@@ -213,7 +215,7 @@ mod tests {
     }
 
     fn test_tree(dir: &PathBuf) -> (Arena<FsEntry>, NodeId) {
-        let (tree, root, _, _) = fs_to_tree(dir, &FsOptions::new());
+        let (tree, root, _, _) = fs_to_tree(&FsOptions::new(dir));
         (tree, root)
     }
 
