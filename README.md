@@ -54,7 +54,6 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 * Figure out why `tree` and `itree` sometimes differ on whether an entry is a file or directory.
 
 ### Medium priority
-* [INTERNALS] Implement `Iterator` for the `TreeLines` struct, since it's a bit opaque how to iterate potentially folded lines.
 * Implement functionality similar to `tree -h`.
 * Implement functionality similar to `tree -d`.
 * Add commands for interacting with files under the cursor.
