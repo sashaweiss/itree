@@ -102,6 +102,7 @@ impl<'a> TreeRender<'a> {
                 s.push_str(dest);
                 s
             }
+            FileType::Stdin => String::from("<stdin>"),
         }
     }
 

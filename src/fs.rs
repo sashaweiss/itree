@@ -15,6 +15,7 @@ pub enum FileType {
     File,
     Dir,
     RestrictedDir,
+    Stdin,
     LinkTo(String),
 }
 
@@ -74,10 +75,15 @@ fn de_to_fsentry(de: DirEntry) -> FsEntry {
         };
 
         FileType::LinkTo(dest)
-    } else if de.file_type().expect("Encountered stdin").is_dir() {
-        FileType::Dir
     } else {
-        FileType::File
+        match de.file_type() {
+            Some(t) => if t.is_dir() {
+                FileType::Dir
+            } else {
+                FileType::File
+            },
+            None => FileType::Stdin,
+        }
     };
 
     FsEntry { ft, de, name }
@@ -135,7 +141,7 @@ fn determine_place_in_tree(walk: &mut iter::Peekable<Walk>, fse: &mut FsEntry) -
                 // See https://github.com/BurntSushi/ripgrep/issue/953.
                 fse.ft = FileType::RestrictedDir;
             } else {
-                eprintln!("Error while building FS tree: {:?}", e);
+                eprintln!("Unexpected error while building tree.\nDetails: {:?}", e);
             }
         }
     };
