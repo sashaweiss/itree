@@ -114,8 +114,9 @@ fn parse_args() -> (
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
         .args(&[
-            interact_arg(),
-            render_arg(),
+            no_interact_arg(),
+            no_render_arg(),
+            only_dirs_arg(),
             level_arg(),
             link_arg(),
             filesize_arg(),
@@ -143,6 +144,7 @@ fn parse_args() -> (
                 .map(|s| s.parse::<u64>().unwrap()),
         )
         .hidden(matches.is_present("hidden"))
+        .only_dirs(matches.is_present("only_dirs"))
         .no_ignore(matches.is_present("no_ignore"))
         .no_git_exclude(matches.is_present("no_git_exclude"));
 
@@ -177,18 +179,24 @@ fn parse_args() -> (
     (fs_options, rd_options, rm)
 }
 
-fn interact_arg<'a, 'b>() -> Arg<'a, 'b> {
+fn no_interact_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("no_interact")
         .long("no-interact")
         .help("Do not enter interactive mode - just print the tree and summary information.")
         .conflicts_with("no_render")
 }
 
-fn render_arg<'a, 'b>() -> Arg<'a, 'b> {
+fn no_render_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("no_render")
         .long("no-render")
         .help("Do not render the tree - just build it and print summary information.")
         .conflicts_with("no_interact")
+}
+
+fn only_dirs_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name("only_dirs")
+        .long("only-dirs")
+        .help("List directories only")
 }
 
 fn level_arg<'a, 'b>() -> Arg<'a, 'b> {

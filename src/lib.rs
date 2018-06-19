@@ -7,5 +7,6 @@ pub mod options;
 pub mod render;
 pub mod term;
 pub mod tree;
+pub mod util;
 
 pub use termion::color;

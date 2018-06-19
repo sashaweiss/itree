@@ -48,6 +48,7 @@ pub struct FsOptions<P: AsRef<Path>> {
     pub follow_links: bool,
     pub max_filesize: Option<u64>,
     pub hidden: bool,
+    pub only_dirs: bool,
     pub no_ignore: bool,
     pub no_git_exclude: bool,
     pub custom_ignore: Vec<String>,
@@ -61,6 +62,7 @@ impl<P: AsRef<Path>> FsOptions<P> {
             follow_links: false,
             max_filesize: None,
             hidden: true,
+            only_dirs: false,
             no_ignore: true,
             no_git_exclude: true,
             custom_ignore: Vec::new(),
@@ -102,6 +104,14 @@ impl<P: AsRef<Path>> FsOptions<P> {
     /// Enabled by default.
     pub fn hidden(&mut self, hidden: bool) -> &mut Self {
         self.hidden = hidden;
+        self
+    }
+
+    /// Set whether or not to consider directories only.
+    ///
+    /// Disabled by default.
+    pub fn only_dirs(&mut self, only_dirs: bool) -> &mut Self {
+        self.only_dirs = only_dirs;
         self
     }
 
