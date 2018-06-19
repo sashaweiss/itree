@@ -273,17 +273,4 @@ mod tests {
             "myfile",
         );
     }
-
-    #[test]
-    fn test_link_fsentry() {
-        let (tree, root) = test_tree(&test_dir("link"));
-        assert_eq!("resources/test/link", tree[root].data.name);
-
-        let children = root.children(&tree)
-            .map(|nid| tree[nid].data.name.as_str())
-            .collect::<Vec<&str>>();
-
-        assert!(children.contains(&"source"));
-        assert!(children.contains(&"dest -> source"));
-    }
 }

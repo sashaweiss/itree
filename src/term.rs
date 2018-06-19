@@ -8,9 +8,7 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 use termion::screen::{ToAlternateScreen, ToMainScreen};
 
-use options::RenderOptions;
 use render::TreeRender;
-use tree::Tree;
 
 fn clear() {
     print!("{}", All);
