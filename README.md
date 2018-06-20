@@ -51,7 +51,6 @@ More commands to come! (E.g. deleting, moving, renaming files.)
 ### High priority
 * Benchmark running from `~`, vs. `tree` and `rg --files`.
 * Write more comprehensive documentation of source code.
-* Figure out why `tree` and `itree` sometimes differ on whether an entry is a file or directory.
 
 ### Medium priority
 * Implement functionality similar to `tree -h`.
