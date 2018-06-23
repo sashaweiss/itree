@@ -76,4 +76,3 @@ Results shown are the mean and standard deviation reported by `hyperfine`. Each 
 * Implement functionality similar to `tree -h`.
 * Add commands for interacting with files under the cursor.
 * Add command for `cd`-ing to the folder the cursor is currently in.
-* Figure out why argument parsing panics when given stdin input.
