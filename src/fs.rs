@@ -7,7 +7,7 @@ use std::path::Path;
 use options::FsOptions;
 use util::PutBack;
 
-use ignore::{self, DirEntry, Walk, WalkBuilder, overrides::OverrideBuilder};
+use ignore::{self, overrides::OverrideBuilder, DirEntry, Walk, WalkBuilder};
 use indextree::{Arena, NodeId};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -188,11 +188,32 @@ pub fn fs_to_tree<P: AsRef<Path>>(
     let mut walk = PutBack::new(get_walker(&options));
 
     let mut tree = Arena::<FsEntry>::new();
-    let root = if let Some(Ok(de)) = walk.next() {
-        tree.new_node(root_to_fsentry(&options.root, de))
-    } else {
-        eprintln!("Failed to get the root!");
-        ::std::process::exit(1);
+    let root = match walk.next() {
+        Some(Ok(de)) => tree.new_node(root_to_fsentry(&options.root, de)),
+        Some(Err(ignore::Error::WithPath { path, err })) => {
+            if let ignore::Error::Io(e) = err.deref() {
+                if e.kind() == io::ErrorKind::NotFound {
+                    eprintln!("Path \"{}\" was not found", path.display());
+                } else {
+                    eprintln!(
+                        "An error occurred getting {}: {:?}",
+                        path.display(),
+                        e.kind()
+                    );
+                }
+            } else {
+                eprintln!("Could not get {}: {:?}", path.display(), err);
+            }
+
+            ::std::process::exit(1);
+        }
+        Some(Err(_)) => {
+            eprintln!("An unexpected error occurred getting the root!");
+            ::std::process::exit(2);
+        }
+        None => {
+            unreachable!("Should always get a first walk entry");
+        }
     };
 
     let mut n_files = 0;
