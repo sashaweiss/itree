@@ -29,7 +29,7 @@ pub fn navigate(render: &mut TreeRender) {
         // The following is necessary to properly read from stdin.
         // For details, see: https://github.com/ticki/termion/issues/42
         //
-        // Wrapped in block so clenaup printing happens in non-raw mode.
+        // Wrapped in block so cleanup printing happens in non-raw mode.
         let _stdout = io::stdout().into_raw_mode().unwrap();
 
         println!("{}", ToAlternateScreen);
