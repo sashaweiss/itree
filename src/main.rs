@@ -116,7 +116,7 @@ fn parse_args() -> (
         .version("0.3.0")
         .args(&[
             no_interact_arg(),
-            no_render_arg(),
+            quiet_arg(),
             only_dirs_arg(),
             level_arg(),
             link_arg(),
@@ -169,7 +169,7 @@ fn parse_args() -> (
         ));
 
     let rm: RenderMethod;
-    if matches.is_present("no_render") {
+    if matches.is_present("quiet") {
         rm = RenderMethod::JustSummary;
     } else if matches.is_present("no_interact") {
         rm = RenderMethod::NoInteractive;
@@ -184,12 +184,12 @@ fn no_interact_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("no_interact")
         .long("no-interact")
         .help("Do not enter interactive mode - just print the tree and summary information.")
-        .conflicts_with("no_render")
+        .conflicts_with("quiet")
 }
 
-fn no_render_arg<'a, 'b>() -> Arg<'a, 'b> {
-    Arg::with_name("no_render")
-        .long("no-render")
+fn quiet_arg<'a, 'b>() -> Arg<'a, 'b> {
+    Arg::with_name("quiet")
+        .long("quiet")
         .help("Do not render the tree - just build it and print summary information.")
         .conflicts_with("no_interact")
 }

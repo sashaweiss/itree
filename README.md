@@ -66,7 +66,7 @@ Results shown are the mean and standard deviation reported by `hyperfine`. Each 
 
 | Command | μ ± σ (run from my `$HOME`) | μ ± σ (run in this repo) |
 |:---|:---:|:---:|
-| `itree --no-ignore --no-exclude --no-render` | **2.953s** ± 0.070s | **0.012s** ± 0.002s |
+| `itree --no-ignore --no-exclude --quiet` | **2.953s** ± 0.070s | **0.012s** ± 0.002s |
 | `itree --no-ignore --no-exclude --no-interact` | 3.511s ± 0.043s | 0.031s ± 0.010s |
 | `tree` | 15.005s ± 4.891s | 0.043s ± 0.014s |
 | `rg --no-ignore --files --quiet` | 1.373s ± 0.051s | 0.010s ± 0.014s |
