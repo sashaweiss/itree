@@ -1,6 +1,6 @@
 [package]
 name = "itree"
-version = "0.2.2"
+version = "0.3.0"
 authors = ["sashaweiss <sasha@sashaweiss.coffee>"]
 description = "An interactively navigable version of the Linux utility `tree`"
 homepage = "https://github.com/sashaweiss/itree"
@@ -13,4 +13,4 @@ license = "MIT"
 termion = "1.5"
 indextree = "1.1"
 ignore = "0.4"
-clap = "2.31"
+clap = "2.3"
