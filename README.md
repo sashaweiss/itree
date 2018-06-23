@@ -37,7 +37,7 @@ $ cargo install
 ```
 
 ## Usage
-Running `itree` will start an interactive CLI. Use `itree -h` to see a full list of configurations and UI options!
+Running `itree` will start an interactive CLI. Use `itree --help` to see a full list of configurations and UI options!
 
 * Use the arrow keys to move around, as makes sense visually: `Up` and `Down` move between files in the same directory level, while `Left` and `Right` move one level higher and lower in the directory tree, respectively.
   * `itree` also supports Vim keybindings - `h`, `j`, `k`, and `l` can be used instead of the arrow keys.
@@ -46,18 +46,33 @@ Running `itree` will start an interactive CLI. Use `itree -h` to see a full list
 
 More commands to come! (E.g. deleting, moving, renaming files.)
 
+## Benchmarks
+Below are tables comparing the performance of `itree` to that of `tree` as well as to `rg` (which uses the same filesystem iterator as `itree`).
+
+[hyperfine](https://github.com/sharkdp/hyperfine) was used for the benchmarking - specifically, the command:
+```
+$ hyperfine --warmup 2 <CMD> --show-output
+```
+where `<CMD>` was filled in with the first column of the below tables. `--show-output` was used to avoid suppressing the output of each command, since printing/rendering is an important part of what `tree` and `itree` do. `--warmup 2` caused each command to run twice before being measured, to potentially warm up caches.
+
+### Results
+Results shown are the mean and standard deviation reported by `hyperfine`. Each is the result of at least 10 measurements.
+
+* The first row shows how long a user would wait for `itree` to display its UI.
+* The second row shows how long `itree` takes to exactly emulate the behavior of `tree`.
+* The third row shows how long `tree` takes to draw a directory structure.
+* The final row shows how long `rg` takes to silently scan the directory structure. Since `rg` and `itree` use the same filesystem iterator, this represents a baseline for computing `itree`'s overhead.
+
+| Command | μ ± σ (run from my `$HOME`) | μ ± σ (run in this repo) |
+|:---|:---:|:---:|
+| `itree --no-ignore --no-exclude --no-render` | **2.953s** ± 0.070s | **0.012s** ± 0.002s |
+| `itree --no-ignore --no-exclude --no-interact` | 3.511s ± 0.043s | 0.031s ± 0.010s |
+| `tree` | 15.005s ± 4.891s | 0.043s ± 0.014s |
+| `rg --no-ignore --files --quiet` | 1.373s ± 0.051s | 0.010s ± 0.014s |
+
 ## My to-do list
-
-### High priority
-* Benchmark running from `~`, vs. `tree` and `rg --files`.
 * Write more comprehensive documentation of source code.
-
-### Medium priority
 * Implement functionality similar to `tree -h`.
-* Implement functionality similar to `tree -d`.
 * Add commands for interacting with files under the cursor.
 * Add command for `cd`-ing to the folder the cursor is currently in.
 * Figure out why `parse_args` panics when given stdin input.
-
-### Known bugs (need more research)
-1) Sometimes (no pattern identifiable yet) it acts as if the terminal window were 4-5 lines shorter than it is, and leaves a blank space at the bottom of the screen.
