@@ -1,3 +1,8 @@
+## 0.3.1 - 2018/06/23
+### Changed
+* `--no-render` argument renamed to `--quiet`, added `-q`
+* Better error messages when given invalid root path argument
+
 ## 0.3.0 - 2018/06/23
 ### Added
 * Functionality similar to `tree -d`, as `itree --only-dirs`.

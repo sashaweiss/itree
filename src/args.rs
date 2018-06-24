@@ -8,7 +8,9 @@ pub enum RenderMethod {
     FullInteractive,
 }
 
-pub fn parse_args() -> (
+pub fn parse_args(
+    version: &str,
+) -> (
     options::FsOptions<String>,
     options::RenderOptions,
     RenderMethod,
@@ -16,7 +18,7 @@ pub fn parse_args() -> (
     let matches = App::new("itree")
         .about("An interactive version of the `tree` utility")
         .author("Sasha Weiss <sasha@sashaweiss.coffee>")
-        .version("0.3.0")
+        .version(version)
         .args(&[
             no_interact_arg(),
             quiet_arg(),
@@ -135,6 +137,7 @@ fn no_interact_arg<'a, 'b>() -> Arg<'a, 'b> {
 
 fn quiet_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name("quiet")
+        .short("q")
         .long("quiet")
         .help("Do not render the tree - just build it and print summary information.")
         .conflicts_with("no_interact")

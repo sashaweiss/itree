@@ -11,8 +11,10 @@ use std::sync::mpsc::channel;
 use std::thread;
 use std::time::Duration;
 
+const VERSION: &str = "0.3.1";
+
 fn main() {
-    let (fs_opts, rd_opts, rm) = parse_args();
+    let (fs_opts, rd_opts, rm) = parse_args(VERSION);
 
     let mut t = build_tree_loading(fs_opts);
     let mut render = render::TreeRender::new(&mut t, rd_opts);
