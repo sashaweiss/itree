@@ -17,7 +17,7 @@ pub fn parse_args(
 ) {
     let matches = App::new("itree")
         .about("An interactive version of the `tree` utility")
-        .author("Sasha Weiss <sasha@sashaweiss.coffee>")
+        .author("Sasha Weiss <asashaweiss.com>")
         .version(version)
         .args(&[
             no_interact_arg(),
